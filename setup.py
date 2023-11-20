@@ -22,7 +22,7 @@ install_requires = \
 
 setup_kwargs = {
     'name': 'pyrbit',
-    'version': '0.0.1',
+    'version': '0.3.0',
     'description': 'Utilities for parametric modeling of Recall based interaction techniques',
     'long_description': None,
     'author': 'jgori',
