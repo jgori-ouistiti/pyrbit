@@ -173,7 +173,7 @@ def gen_hessians(
         "estimated_parameters": estimated_parameters.tolist(),
     }
     if filename is None:
-        return json_data
+        return json_data, filename
     if save:
         with open(filename, "w") as _file:
             json.dump(json_data, _file)
@@ -346,116 +346,94 @@ def compute_full_observed_information(
     )
 
 
-# def _compute_full_observed_information(
-#     TRUE_VALUE,
-#     recall_array,
-#     observed_hessians,
-#     estimated_parameters,
-#     subsample_sequence,
-#     axs=None,
-#     recall_kwargs=None,
-#     observed_information_kwargs=None,
-#     bias_kwargs=None,
-#     std_kwargs=None,
-# ):
-#     """
-#     recall_array.shape = (REPET, N)
+if __name__ == "__main__":
+    # [information-start]
+    from pyrbit.ef import ExponentialForgetting
+    from pyrbit.information import gen_hessians, compute_full_observed_information
 
-#     """
-#     default_recall_kwargs = {
-#         "fit_reg": False,
-#         "ci": None,
-#         "label": "estimated probabilities",
-#     }
-#     if recall_kwargs is not None:
-#         default_recall_kwargs.update(recall_kwargs)
+    import matplotlib.pyplot as plt
 
-#     if bias_kwargs is None:
-#         bias_kwargs = {}
-#     if std_kwargs is None:
-#         std_kwargs = {}
+    ALPHA_TRUE = 1e-2
+    BETA_TRUE = 4e-1
+    SEED = 999
+    rng = numpy.random.default_rng(seed=SEED)
+    REPETITION = 1000
+    SUBSAMPLE = 15  # use a subsample such that N/subsample is integer. A ratio of 10 as used here should be fine for most cases.
+    N = 150
+    subsample_sequence = numpy.logspace(0.5, numpy.log10(N), int(N / SUBSAMPLE))
 
-#     n = len(TRUE_VALUE)
+    # IID schedule --- This is what you want to modify to evaluate a different schedule
+    def play_iid_schedule(ef, N):
+        k_vector = rng.integers(low=-1, high=10, size=N)
+        deltas = rng.integers(low=1, high=5000, size=N)
+        recall_probs = simulate_arbitrary_traj(ef, k_vector, deltas)
+        recall = [rp[0] for rp in recall_probs]
+        k_repetition = [k for k in k_vector]
+        return recall, deltas, k_repetition
 
-#     REPET, N = recall_array.shape
+    # helpfer function
+    def simulate_arbitrary_traj(ef, k_vector, deltas):
+        recall = []
+        for k, d in zip(k_vector, deltas):
+            ef.update(0, 0, N=(k + 1))
+            recall.append(ef.query_item(0, d))
+        return recall
 
-#     TRUE_VALUE = numpy.repeat(
-#         numpy.asarray(TRUE_VALUE)[:, None], estimated_parameters.shape[1], axis=1
-#     )
-#     estimated_parameters_bias = numpy.abs(
-#         numpy.nanmean(estimated_parameters, axis=2) - TRUE_VALUE
-#     )
-#     estimated_parameters_std = numpy.nanstd(estimated_parameters, axis=2)
+    ef = ExponentialForgetting(1, ALPHA_TRUE, BETA_TRUE, seed=SEED)
+    play_schedule = play_iid_schedule
+    play_schedule_args = (N,)
 
-#     k = estimated_parameters_bias.shape[1]
-#     agg_data = numpy.zeros(shape=(n * k, 4))
-#     agg_data[:k, 0] = estimated_parameters_bias[0, :]
-#     agg_data[k : n * k, 0] = estimated_parameters_bias[1, :]
-#     agg_data[:k, 1] = estimated_parameters_std[0, :]
-#     agg_data[k : n * k, 1] = estimated_parameters_std[1, :]
-#     agg_data[:k, 2] = subsample_sequence
-#     agg_data[k : n * k, 2] = subsample_sequence
-#     agg_data[:k, 3] = 0
-#     agg_data[k : n * k, 3] = 1
+    optim_kwargs = {
+        "method": "L-BFGS-B",
+        "bounds": [(1e-5, 0.1), (0, 0.99)],
+        "guess": (1e-3, 0.7),
+        "verbose": False,
+    }
+    filename = None  # change if you want to save the data (json)
+    json_data, _ = gen_hessians(
+        N,
+        REPETITION,
+        [ALPHA_TRUE, BETA_TRUE],
+        ef,
+        play_schedule,
+        subsample_sequence,
+        play_schedule_args=play_schedule_args,
+        optim_kwargs=optim_kwargs,
+        filename=filename,
+    )
 
-#     df = pandas.DataFrame(agg_data, columns=["|Bias|", "Std dev", "N", "parameter"])
-#     if n == 2:
-#         mapping = {"0": r"$\alpha$", "1": r"$\beta$"}
-#     else:
-#         raise NotImplementedError
-#     df["parameter"] = df["parameter"].map(lambda s: mapping.get(str(int(s))))
-#     df["N"] = df["N"].astype(int)
+    # reshaping the output of gen_hessians
+    recall_array = numpy.asarray(json_data["recall_array"])
+    observed_hessians = numpy.asarray(json_data["observed_hessians"])
+    observed_cum_hessians = numpy.asarray(json_data["observed_cum_hessians"])
+    estimated_parameters = numpy.asarray(json_data["estimated_parameters"])
+    recall_array = recall_array.transpose(1, 0)
 
-#     if axs is None:
-#         mean_observed_information = numpy.mean(observed_hessians, axis=2)
-#         mean_observed_information = mean_observed_information.transpose(1, 0)
-#         return mean_observed_information, agg_data
+    # parameters for the information plots
+    recall_kwargs = {
+        "x_bins": 10,
+    }
+    observed_information_kwargs = {"x_bins": 10, "cum_color": "orange"}
 
-#     X = numpy.ones((recall_array.shape))
-#     X = numpy.cumsum(X, axis=1)
-#     seaborn.regplot(
-#         x=X.ravel(),
-#         y=recall_array.ravel(),
-#         scatter=True,
-#         fit_reg=False,
-#         ci=None,
-#         ax=axs[0],
-#         label="events",
-#     )
+    fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(20, 15))
 
-#     seaborn.regplot(
-#         x=X.ravel(), y=recall_array.ravel(), ax=axs[0], **default_recall_kwargs
-#     )
+    (
+        fischer_information,
+        agg_data,
+        cumulative_information,
+        cum_inf,
+    ) = compute_full_observed_information(
+        [ALPHA_TRUE, BETA_TRUE],
+        recall_array,
+        observed_hessians,
+        estimated_parameters,
+        subsample_sequence,
+        axs=axs.ravel(),
+        recall_kwargs=recall_kwargs,
+        observed_information_kwargs=observed_information_kwargs,
+        bias_kwargs=None,
+        std_kwargs=None,
+    )
 
-#     if axs is not None:
-#         _ax = axs[1]
-#     else:
-#         _ax = None
-
-#     mean_observed_information, information, cum_inf, _ax = compute_observed_information(
-#         observed_hessians,
-#         axs=_ax,
-#         observed_information_kwargs=observed_information_kwargs,
-#     )
-
-#     seaborn.barplot(
-#         data=df, x="N", y="|Bias|", hue="parameter", ax=axs[2], **bias_kwargs
-#     )
-#     seaborn.barplot(
-#         data=df, x="N", y="Std dev", hue="parameter", ax=axs[3], **std_kwargs
-#     )
-
-#     axs[0].set_ylim([-0.05, 1.05])
-#     axs[0].set_xlabel("N")
-#     axs[0].set_ylabel("Recalls")
-#     axs[0].legend()
-
-#     axs[2].set_yscale("log")
-#     axs[3].set_yscale("log")
-
-#     return (
-#         mean_observed_information,
-#         agg_data,
-#         information,
-#         cum_inf,
-#     )
+    plt.tight_layout(w_pad=2, h_pad=2)
+    plt.show()

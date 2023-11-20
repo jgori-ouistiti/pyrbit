@@ -23,7 +23,18 @@ Alternatively, you can also downlaod the source and build it using `poetry <http
 
     poetry install
 
+What can you do with pyrbit?
+================================
 
+pyrbit is a set of utilities for people who want help with designing experiments for evaluating and comparing recall-based interaction techniques. Here is how this tool can help you:
+
+* Use cognitive models for simulating human memory:
+  + Exponential Forgetting Model
+  + ACT-R model
+* Utilies to simulate experiments: populations, experiments, trials 
+* Evaluating the informativeness of a particular schedule
+* Run power analyses for a particular schedule to test the difference between block recall percentages
+  
 
    
 .. toctree::
@@ -34,7 +45,8 @@ Alternatively, you can also downlaod the source and build it using `poetry <http
     Exponential Forgetting Model <ef>
     ACT-R Model <actr>
     Memory Utilities <memory>
-    Informing the Design of Experiments <design>
+    Evaluating the informativeness of a schedule <information>
+    Comparing block recall percentages, power analysis <design>
     API reference <_autosummary/pyrbit>
 
 
