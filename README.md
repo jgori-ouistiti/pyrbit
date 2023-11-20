@@ -5,7 +5,7 @@ This pyrbit, an inference, simulation and utility library for interaction modali
 
 1. You can download the source and use the library with poetry
 2. You can download the source and install it with pip
-3. You can install the module directly from [PyPI](https://testpypi.org/project/pyrbit/)
+3. You can install the module directly from [PyPI](https://pypi.org/project/pyrbit/)
 
 ```bash
 pip install pyrbit

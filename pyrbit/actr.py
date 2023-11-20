@@ -6,31 +6,6 @@ import numpy
 import matplotlib.pyplot as plt
 
 
-def simulate_arbitrary_traj(actr, N, seed=None):
-    recall = []
-    times = []
-    query_times = []
-    rng = numpy.random.default_rng(seed=seed)
-
-    for trial in range(N):
-        actr.reset()
-        nrepet = rng.integers(low=1, high=10, size=(1,))
-        _times = numpy.sort(rng.random(size=(int(nrepet),)) * 100)
-        times.append(_times)
-        actr.update(0, _times)
-        query_time = rng.random(size=(1,)) * 100 + _times[-1]
-        query_times.append(query_time)
-        recall.append(actr.query_item(0, query_time))
-    return recall, times, query_times
-
-
-def gen_data(actr_model, N, seed=None):
-    recalls, times, query_times = simulate_arbitrary_traj(actr_model, N, seed=seed)
-    recalls = [int(r[0]) for r in recalls]
-    deltatis = [qtime - time for time, qtime in zip(times, query_times)]
-    return recalls, deltatis
-
-
 class ACTR(MemoryModel):
     def __init__(self, nitems, d, s, tau, buffer_size=256, seed=None):
         super().__init__(nitems, seed=seed)
@@ -39,7 +14,6 @@ class ACTR(MemoryModel):
         self.reset()
 
     def reset(self, d=None, s=None, tau=None):
-        super().reset()
         if d is not None:
             self.d = d
         if s is not None:
@@ -81,6 +55,10 @@ class ACTR(MemoryModel):
             self.counter_pres[item] += len(time)
 
 
+def diagnostics(d, deltatis, recall, ax=None, **kwargs):
+    return logregplot(d, deltatis, recall, ax=None, **kwargs)
+
+
 def logregplot(d, deltatis, recall, ax=None, label_prefix="", **kwargs):
     x_bins = kwargs.pop("x_bins", None)
     if x_bins is None:
@@ -102,7 +80,6 @@ def identify_actr_from_recall_sequence(
     basin_hopping=False,
     basin_hopping_kwargs=None,
 ):
-
     infer_results = mle_sequence(
         _actr_sequence_likelihood_transform,
         optim_kwargs,
@@ -128,7 +105,6 @@ def actr_observed_information_matrix(recall_sequence, deltatis, d, s, tau):
 def _actr_get_sequence_observed_information_matrix(
     recall_sequence, deltatis, d, s, tau
 ):
-
     J_11 = 0
     J_12 = 0
     J_13 = 0
@@ -140,7 +116,6 @@ def _actr_get_sequence_observed_information_matrix(
         recall_sequence,
         deltatis,
     ):
-        # print(recall, delta, k)
         if recall == 1:
             J_11 += actr_ddq1_dd_dd_sample(tau, s, d, deltati)
             J_12 += actr_ddq1_dd_ds_sample(tau, s, d, deltati)
@@ -168,7 +143,6 @@ def _actr_sequence_likelihood_transform(
     recalls,
     transform=None,
 ):
-
     ll = 0
     d, s, tau = theta
     if transform is None:
@@ -288,7 +262,7 @@ def da_dd(deltati, d):
 def actr_dq1_ds_sample(tau, s, d, deltati):
     a = activation(deltati, d)
     X = (a - tau) / s
-    return (tau - a) / s ** 2 * logistic(-X)
+    return (tau - a) / s**2 * logistic(-X)
 
 
 def actr_dq1_dtau_sample(tau, s, d, deltati):
@@ -306,7 +280,7 @@ def actr_dq1_dd_sample(tau, s, d, deltati):
 def actr_dq0_ds_sample(tau, s, d, deltati):
     a = activation(deltati, d)
     X = (a - tau) / s
-    return -(tau - a) / s ** 2 * logistic(X)
+    return -(tau - a) / s**2 * logistic(X)
 
 
 def actr_dq0_dtau_sample(tau, s, d, deltati):
@@ -338,7 +312,7 @@ def dda_ddd(deltati, d):
 def actr_ddq1_ds_ds_sample(tau, s, d, deltati):
     a = activation(deltati, d)
     X = (a - tau) / s
-    return 2 * (a - tau) / s ** 3 * logistic(-X) - (tau - a) ** 2 / s ** 4 * (
+    return 2 * (a - tau) / s**3 * logistic(-X) - (tau - a) ** 2 / s**4 * (
         logistic(X) * logistic(-X)
     )
 
@@ -346,13 +320,13 @@ def actr_ddq1_ds_ds_sample(tau, s, d, deltati):
 def actr_ddq1_dtau_dtau_sample(tau, s, d, deltati):
     a = activation(deltati, d)
     X = (a - tau) / s
-    return -1 / s ** 2 * (logistic(X) * logistic(-X))
+    return -1 / s**2 * (logistic(X) * logistic(-X))
 
 
 def actr_ddq1_dd_dd_sample(tau, s, d, deltati):
     a = activation(deltati, d)
     X = (a - tau) / s
-    return -1 / s ** 2 * (logistic(X) * logistic(-X)) * da_dd(
+    return -1 / s**2 * (logistic(X) * logistic(-X)) * da_dd(
         deltati, d
     ) ** 2 + 1 / s * logistic(-X) * dda_ddd(deltati, d)
 
@@ -360,19 +334,19 @@ def actr_ddq1_dd_dd_sample(tau, s, d, deltati):
 def actr_ddq1_ds_dtau_sample(tau, s, d, deltati):
     a = activation(deltati, d)
     X = (a - tau) / s
-    return (tau - a) / s ** 3 * (logistic(X) * logistic(-X)) + 1 / s ** 2 * logistic(-X)
+    return (tau - a) / s**3 * (logistic(X) * logistic(-X)) + 1 / s**2 * logistic(-X)
 
 
 def actr_ddq1_dd_dtau_sample(tau, s, d, deltati):
     a = activation(deltati, d)
     X = (a - tau) / s
-    return (logistic(X) * logistic(-X)) * 1 / s ** 2 * da_dd(deltati, d)
+    return (logistic(X) * logistic(-X)) * 1 / s**2 * da_dd(deltati, d)
 
 
 def actr_ddq1_dd_ds_sample(tau, s, d, deltati):
     a = activation(deltati, d)
     X = (a - tau) / s
-    return -1 / s ** 2 * logistic(-X) * da_dd(deltati, d) - (tau - a) / s ** 3 * da_dd(
+    return -1 / s**2 * logistic(-X) * da_dd(deltati, d) - (tau - a) / s**3 * da_dd(
         deltati, d
     ) * (logistic(X) * logistic(-X))
 
@@ -383,7 +357,7 @@ def actr_ddq1_dd_ds_sample(tau, s, d, deltati):
 def actr_ddq0_ds_ds_sample(tau, s, d, deltati):
     a = activation(deltati, d)
     X = (a - tau) / s
-    return -2 * (a - tau) / s ** 3 * logistic(X) - (tau - a) ** 2 / s ** 4 * (
+    return -2 * (a - tau) / s**3 * logistic(X) - (tau - a) ** 2 / s**4 * (
         logistic(X) * logistic(-X)
     )
 
@@ -391,13 +365,13 @@ def actr_ddq0_ds_ds_sample(tau, s, d, deltati):
 def actr_ddq0_dtau_dtau_sample(tau, s, d, deltati):
     a = activation(deltati, d)
     X = (a - tau) / s
-    return -1 / s ** 2 * (logistic(X) * logistic(-X))
+    return -1 / s**2 * (logistic(X) * logistic(-X))
 
 
 def actr_ddq0_dd_dd_sample(tau, s, d, deltati):
     a = activation(deltati, d)
     X = (a - tau) / s
-    return -1 / s ** 2 * (logistic(X) * logistic(-X)) * da_dd(
+    return -1 / s**2 * (logistic(X) * logistic(-X)) * da_dd(
         deltati, d
     ) ** 2 - 1 / s * logistic(X) * dda_ddd(deltati, d)
 
@@ -405,47 +379,74 @@ def actr_ddq0_dd_dd_sample(tau, s, d, deltati):
 def actr_ddq0_ds_dtau_sample(tau, s, d, deltati):
     a = activation(deltati, d)
     X = (a - tau) / s
-    return (tau - a) / s ** 3 * (logistic(X) * logistic(-X)) - 1 / s ** 2 * logistic(X)
+    return (tau - a) / s**3 * (logistic(X) * logistic(-X)) - 1 / s**2 * logistic(X)
 
 
 def actr_ddq0_dd_dtau_sample(tau, s, d, deltati):
     a = activation(deltati, d)
     X = (a - tau) / s
-    return (logistic(X) * logistic(-X)) * 1 / s ** 2 * da_dd(deltati, d)
+    return (logistic(X) * logistic(-X)) * 1 / s**2 * da_dd(deltati, d)
 
 
 def actr_ddq0_dd_ds_sample(tau, s, d, deltati):
     a = activation(deltati, d)
     X = (a - tau) / s
-    return 1 / s ** 2 * logistic(X) * da_dd(deltati, d) - (tau - a) / s ** 3 * da_dd(
+    return 1 / s**2 * logistic(X) * da_dd(deltati, d) - (tau - a) / s**3 * da_dd(
         deltati, d
     ) * (logistic(X) * logistic(-X))
 
 
 if __name__ == "__main__":
-
+    # [startdoc]
     from pyrbit.mle_utils import CI_asymptotical, confidence_ellipse
+    from pyrbit.actr import (
+        ACTR,
+        diagnostics,
+        actr_observed_information_matrix,
+        identify_actr_from_recall_sequence,
+    )
 
     import numpy
     import matplotlib.pyplot as plt
 
-    plt.style.use(style="fivethirtyeight")
-
     SEED = None
-    N = 1000
+    N = 10000
 
     d = 0.6
     tau = -0.7
     s = 0.25
-
     rng = numpy.random.default_rng(seed=SEED)
+
+    # helper functions for simulations
+    def simulate_arbitrary_traj(actr, N, seed=None):
+        recall = []
+        times = []
+        query_times = []
+        rng = numpy.random.default_rng(seed=seed)
+
+        for trial in range(N):
+            actr.reset()
+            nrepet = rng.integers(low=1, high=10, size=(1,))
+            _times = numpy.sort(rng.random(size=(int(nrepet),)) * 100)
+            times.append(_times)
+            actr.update(0, _times)
+            query_time = rng.random(size=(1,)) * 100 + _times[-1]
+            query_times.append(query_time)
+            recall.append(actr.query_item(0, query_time))
+        return recall, times, query_times
+
+    def gen_data(actr_model, N, seed=None):
+        recalls, times, query_times = simulate_arbitrary_traj(actr_model, N, seed=seed)
+        recalls = [int(r[0]) for r in recalls]
+        deltatis = [qtime - time for time, qtime in zip(times, query_times)]
+        return recalls, deltatis
 
     # ==================== Simulate some data
     actr = ACTR(1, 0.5, 0.25, -0.7, buffer_size=16, seed=SEED)
     recalls, deltatis = gen_data(actr, N)
 
-    # ================= Diagnostics (logistic regression)
-    ax = logregplot(
+    # ================= Run Diagnostics (logistic regression)
+    ax = diagnostics(
         0.6,
         deltatis,
         recalls,
@@ -454,14 +455,14 @@ if __name__ == "__main__":
     )
     ax.legend()
     plt.tight_layout()
-    # plt.show()
+    plt.show()
 
-    # ==================== MLE
+    # ==================== Perform ML Estimation
     optim_kwargs = {"method": "L-BFGS-B", "bounds": [(0, 1), (-5, 5), (-5, 5)]}
     verbose = False
     guess = (0.2, 0.5, -1)
 
-    # here with basin_hopping for illustration. Slows down, as optimization is repeated 1+niter times
+    # An illustration of identifying with basin_hopping. This slows down inference, as optimization is repeated 1+niter times
     def _callable(x, f, accept):
         print(x, f, accept)
 
@@ -477,11 +478,14 @@ if __name__ == "__main__":
     # see scipy.optimize doc for returned object with basinhopping
     x = inference_results.lowest_optimization_result.x
 
-    # ================= CIs and CE
+    # ================= computing Confidence Intervals and Ellipses
     J = actr_observed_information_matrix(recalls, deltatis, *x)
+    # covariance matrix
     covar = numpy.linalg.inv(J)
+    # Confidence intervals
     cis = CI_asymptotical(covar, x)
-    # draw the three ellipses, because the ellipsoid will be hard to interpret.
+    # Confidence ellipses
+    # draw the three ellipses, because the confidence ellipsoid will be hard to interpret.
     fig, axs = plt.subplots(nrows=1, ncols=3)
     labels = [r"$d$", r"$s$", r"$\tau$"]
     for n in range(3):
@@ -494,4 +498,4 @@ if __name__ == "__main__":
         ax.set_xlabel(f"{labels[i]}")
         ax.set_ylabel(f"{labels[j]}")
     plt.tight_layout()
-    # plt.show()
+    plt.show()

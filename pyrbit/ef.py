@@ -7,16 +7,21 @@ import numpy
 import pandas
 import statsmodels.formula.api as smf
 import seaborn
+import warnings
 
 
 class ExponentialForgetting(MemoryModel):
-    def __init__(self, nitems, a, b, **kwargs):
+    def __init__(self, nitems, a, b, max_a=0.5, min_a=10 ** (-6), **kwargs):
         super().__init__(nitems, **kwargs)
+        if a > max_a or a < min_a:
+            warnings.warn(
+                f"value a = {a} is outside admissible range ({min_a} < a < {max_a}). I am clipping it"
+            )
+            a = numpy.clip(a, min_a, max_a)
         self.a, self.b = a, b
         self.reset()
 
     def reset(self, *args, a=None, b=None):
-        super().reset()
         if a is not None:
             self.a = a
         if b is not None:
@@ -63,7 +68,6 @@ def identify_ef_from_recall_sequence(
     basin_hopping=False,
     basin_hopping_kwargs=None,
 ):
-
     infer_results = mle_sequence(
         _ef_get_sequence_likelihood,
         optim_kwargs,
@@ -102,7 +106,7 @@ def diagnostics(
     exponent_kwargs=None,
     loglogplot_kwargs=None,
 ):
-    _exponent_kwargs = {"xbins": int(len(deltas) ** (1 / 3))}
+    _exponent_kwargs = {"xbins": int(len(deltas) ** (1 / 3)), "inf_to_int": -10}
     if exponent_kwargs is not None:
         _exponent_kwargs.update(exponent_kwargs)
 
@@ -110,19 +114,105 @@ def diagnostics(
     if loglogplot_kwargs is not None:
         _loglogplot_kwargs.update(loglogplot_kwargs)
 
-
     exponent = [
         -alpha * (1 - beta) ** (k) * dt for (k, dt) in zip(k_repetition, deltas)
     ]
 
-    
-
     fig, axs = plt.subplots(nrows=1, ncols=1)
-    ax, regplot = plot_exponent_scatter(exponent, recall, ax=axs, **_exponent_kwargs, inf_to_int=-10)
+    ax, regplot = plot_exponent_scatter(exponent, recall, ax=axs, **_exponent_kwargs)
     ax.legend()
     fg, ax, estim = loglogpplot(k_repetition, recall, deltas, **_loglogplot_kwargs)
 
     return fig, (fg, ax, estim)
+
+
+def flatten(
+    data,
+    schedule=None,
+    population_model=None,
+    test_blocks=None,
+    get_k_delta=False,
+    replications=1,
+):
+    if replications != 1:
+        raise NotImplementedError("not supported yet")
+    if not get_k_delta:
+        return data[0, 0, ...].ravel()
+    if test_blocks is None:
+        k, d = get_k_delta_schedule(schedule)
+
+        k = numpy.tile(k, (replications, len(population_model), 1))
+        k = k.transpose(0, 2, 1)
+
+        d = numpy.tile(d, (replications, len(population_model), 1))
+        d = d.transpose(0, 2, 1)
+
+    else:
+        k, d = get_k_delta_schedule(schedule, test_blocks=test_blocks, data=data)
+        k = numpy.array(k).reshape(len(population_model), len(test_blocks)).T
+        d = numpy.array(d).reshape(len(population_model), len(test_blocks)).T
+
+    return data[0, 0, ...].ravel(), d.ravel(), k.ravel()
+
+
+def get_k_delta_schedule(schedule, test_blocks=None, data=None):
+    if test_blocks is None:
+        return _get_k_delta_schedule_no_test_blocks(schedule)
+    else:
+        return _get_k_delta_schedule_test_blocks(
+            schedule, test_blocks=test_blocks, data=data
+        )
+
+
+def _get_k_delta_schedule_no_test_blocks(schedule):
+    counter = {str(i): -1 for i in range(schedule.nitems)}
+    timer = {str(i): -numpy.inf for i in range(schedule.nitems)}
+    k_vec = []
+    delta_vec = []
+    for item, time in schedule:
+        k_vec.append(counter[str(item)])
+        delta_vec.append(time - timer[str(item)])
+        counter[str(item)] += 1
+        timer[str(item)] = time
+    return k_vec, delta_vec
+
+
+def _get_k_delta_schedule_test_blocks(schedule, test_blocks, data):
+    recall = data[0, 0, :, :].transpose(1, 0)
+    k_vec = []
+    delta_vec = []
+    for r in recall:
+        counter = {str(i): -1 for i in range(schedule.nitems)}
+        timer = {str(i): -numpy.inf for i in range(schedule.nitems)}
+
+        nr = 0
+        for n, (item, time) in enumerate(schedule):
+            m = int(n / (schedule.nitems * schedule.repet_trials))
+            if m in test_blocks:
+                k_vec.append(counter[str(item)])
+                delta_vec.append(time - timer[str(item)])
+                if r[nr]:
+                    counter[str(item)] += 1
+                    timer[str(item)] = time
+                nr += 1
+            else:
+                counter[str(item)] += 1
+                timer[str(item)] = time
+
+    return k_vec, delta_vec
+
+
+# def serialize_experiment(data, times):
+#     _, block_size = data.shape
+#     k_vector = []
+#     deltas = []
+#     for i in data:
+#         k_vector += [k for k in range(-1, block_size - 1)]
+#         deltas += [numpy.infty] + numpy.diff(numpy.asarray(times)).tolist()
+#     data = data.reshape(
+#         -1,
+#     )
+#     return data, numpy.asarray(k_vector), numpy.asarray(deltas)
 
 
 ## ============ for observed information matrix ============= ##
@@ -198,14 +288,14 @@ def ef_ddq0_dalpha_dalpha_sample(alpha, beta, k, deltat):
         try:
             return (
                 -((1 - beta) ** (2 * k))
-                * deltat ** 2
+                * deltat**2
                 * (
                     ef_p1_sample(alpha, beta, k, deltat)
                     / ef_p0_sample(alpha, beta, k, deltat) ** 2
                 )
             )
         except FloatingPointError:
-            return -1 / alpha ** 2
+            return -1 / alpha**2
 
 
 def ef_ddq0_dalpha_dbeta_sample(alpha, beta, k, deltat):
@@ -223,7 +313,7 @@ def ef_ddq0_dalpha_dbeta_sample(alpha, beta, k, deltat):
                 + alpha
                 * k
                 * (1 - beta) ** (2 * k - 1)
-                * deltat ** 2
+                * deltat**2
                 * ef_p1_sample(alpha, beta, k, deltat)
                 / ef_p0_sample(alpha, beta, k, deltat) ** 2
             )
@@ -245,9 +335,9 @@ def ef_ddq0_dbeta_dbeta_sample(alpha, beta, k, deltat):
                 * deltat
                 * ef_p1_sample(alpha, beta, k, deltat)
                 / ef_p0_sample(alpha, beta, k, deltat)
-                - alpha ** 2
-                * k ** 2
-                * deltat ** 2
+                - alpha**2
+                * k**2
+                * deltat**2
                 * (1 - beta) ** (2 * k - 2)
                 * ef_p1_sample(alpha, beta, k, deltat)
                 / ef_p0_sample(alpha, beta, k, deltat) ** 2
@@ -294,7 +384,6 @@ def _ef_get_sequence_likelihood(
 def _ef_get_sequence_observed_information_matrix(
     recall_sequence, deltas, alpha, beta, k_vector=None
 ):
-
     J_11 = 0
     J_12 = 0
     J_22 = 0
@@ -324,7 +413,6 @@ def __ef_get_sequence_likelihood_with_transform(
     k_vector=None,
     transform=None,
 ):
-
     ll = 0
     alpha, beta = theta
 
@@ -346,11 +434,9 @@ def __ef_get_sequence_likelihood_with_transform(
 #### ============================= Plot
 
 
-def plot_exponent_scatter(exponent, recall, ax=None, xbins=15, inf_to_int = None):
-
+def plot_exponent_scatter(exponent, recall, ax=None, xbins=15, inf_to_int=None):
     if inf_to_int is not None:
         exponent = numpy.nan_to_num(exponent, neginf=inf_to_int)
-
 
     if ax is None:
         fig, ax = plt.subplots(nrows=1, ncols=1)
@@ -380,7 +466,6 @@ def plot_exponent_scatter(exponent, recall, ax=None, xbins=15, inf_to_int = None
 
 
 def loglogpplot(k_repetition, recall, deltas, x_bins=7, mode="log"):
-
     sequence = [(k, r, d) for k, r, d in zip(k_repetition, recall, deltas)]
     df = pandas.DataFrame(sequence)
     df.columns = ["repetition", "recall", "deltat"]
@@ -436,21 +521,28 @@ def loglogpplot(k_repetition, recall, deltas, x_bins=7, mode="log"):
 
 
 if __name__ == "__main__":
-
+    # [startdoc]
     from pyrbit.mle_utils import CI_asymptotical, confidence_ellipse
-
+    from pyrbit.ef import (
+        ExponentialForgetting,
+        diagnostics,
+        identify_ef_from_recall_sequence,
+        ef_observed_information_matrix,
+        covar_delta_method_log_alpha,
+    )
+    from pyrbit.mem_utils import BlockBasedSchedule, experiment
     import numpy
     import matplotlib.pyplot as plt
 
-    plt.style.use(style="fivethirtyeight")
-
     SEED = None
-    N = 1000
-
+    N = 10000
     alpha = 0.001
     beta = 0.4
 
+    # Initialize an EF memory model with 1 item
     ef = ExponentialForgetting(1, alpha, beta, seed=SEED)
+
+    # Helper function for simulation
     rng = numpy.random.default_rng(seed=SEED)
 
     def simulate_arbitrary_traj(ef, k_vector, deltas):
@@ -468,16 +560,28 @@ if __name__ == "__main__":
     k_repetition = [k - 1 for k in k_vector]
 
     # ================ Run diagnostics
+    # some options that you can set to tweak the diagnostics output
+    exponent_kwargs = dict(xbins=15, inf_to_int=None)
+    loglogplot_kwargs = dict(x_bins=7, mode="lin")
+    # Run the diagnostics
+    fig, (fg, ax, estim) = diagnostics(
+        alpha,
+        beta,
+        k_repetition,
+        deltas,
+        recall,
+        exponent_kwargs=exponent_kwargs,
+        loglogplot_kwargs=loglogplot_kwargs,
+    )
+    plt.tight_layout()
+    plt.show()
 
-    fig, (fg, ax, estim) = diagnostics(alpha, beta, k_repetition, deltas, recall)
-    # plt.tight_layout()
-    # plt.show()
-
-    # ==================== MLE
+    # ==================== Perform ML Estimation
+    # Solver parameters; this should work well and be quite fast
     optim_kwargs = {"method": "L-BFGS-B", "bounds": [(1e-5, 0.1), (0, 0.99)]}
     verbose = False
     guess = (1e-2, 0.5)
-    # can use basin_hopping for more precise estimates, see actr.py for an example or docs
+    # Pass all the observed data to the inference function. You can use basin_hopping for more precise estimates but this will take more time, see actr.py for an example. Returns the output of scipy.optimize
     inference_results = identify_ef_from_recall_sequence(
         recall_sequence=recall,
         deltas=deltas,
@@ -485,9 +589,12 @@ if __name__ == "__main__":
         optim_kwargs=optim_kwargs,
         verbose=verbose,
         guess=guess,
+        basin_hopping=False,
+        basin_hopping_kwargs=None,
     )
 
-    ## ==== CIs and CE
+    ## ==== computing Confidence Intervals and Ellipses
+
     # Get observed information matrix
     J = ef_observed_information_matrix(
         recall, deltas, *inference_results.x, k_vector=k_repetition
@@ -508,5 +615,66 @@ if __name__ == "__main__":
     ax_log = confidence_ellipse(x, transformed_covar, ax=axs[1])
     ax_lin.set_title("CE with linear scale")
     ax_log.set_title("CE with alpha log scale")
-    # plt.tight_layout()
-    # plt.show()
+    plt.tight_layout()
+    plt.show()
+
+    # ========== An example of inference when using a BlockBasedSchedule
+    # Define a blockbasedschedule
+    schedule = BlockBasedSchedule(
+        1,
+        5,
+        [200, 200, 200, 200, 2000, 86400, 200, 2000],
+        repet_trials=1,
+        seed=123,
+        sigma_t=None,
+    )
+    # Alternative way of defining a population as a list
+    population_model = [
+        ExponentialForgetting(1, 10 ** (-2.5), 0.75, seed=None) for i in range(200)
+    ]
+
+    data = experiment(
+        population_model,
+        schedule,
+        test_blocks=[
+            1,
+            3,
+            5,
+            6,
+            8,
+        ],  # If there are learning vs recall blocks, define which are the test blocks. This changes behavior of the memory model (false recall during test does not count as an extra repetition in the models)
+        replications=1,  # untested for != 1, but is not useful
+    )
+
+    # make a big one D array out of the recall data, and get the corresponding deltas and ks
+    r, d, k = flatten(
+        data,
+        schedule=schedule,
+        population_model=population_model,
+        test_blocks=[1, 3, 5, 6, 8],
+        get_k_delta=True,
+        replications=1,
+    )
+
+    # infer model parameters
+    optim_kwargs = {"method": "L-BFGS-B", "bounds": [(1e-5, 0.1), (0, 0.99)]}
+    verbose = False
+    guess = (1e-2, 0.5)
+    # Pass all the observed data to the inference function. You can use basin_hopping for more precise estimates but this will take more time, see actr.py for an example. Returns the output of scipy.optimize
+    inference_results = identify_ef_from_recall_sequence(
+        recall_sequence=r,
+        deltas=d,
+        k_vector=k,
+        optim_kwargs=optim_kwargs,
+        verbose=verbose,
+        guess=guess,
+        basin_hopping=False,
+        basin_hopping_kwargs=None,
+    )
+    J = ef_observed_information_matrix(r, d, *inference_results.x, k_vector=k)
+    covar = numpy.linalg.inv(J)
+    # get 95% confidence intervals
+    transformed_covar = covar_delta_method_log_alpha(inference_results.x[0], covar)
+    x = [numpy.log10(inference_results.x[0]), inference_results.x[1]]
+    cis = CI_asymptotical(transformed_covar, x, critical_value=1.96)
+    print(cis)

@@ -11,6 +11,8 @@ def test_BlockBasedSchedule():
     repet_trials = 1
     schedule = BlockBasedSchedule(nitems, intertrial_time, interblock_time, repet_trials=repet_trials)
 
+    
+
 
 if __name__ == "__main__":
     test_BlockBasedSchedule()

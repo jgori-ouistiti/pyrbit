@@ -15,12 +15,6 @@ class MemoryModel:
     def compute_probabilities(self, time=None):
         raise NotImplementedError
 
-    def reset(self):
-        # if isinstance(self.seed, numpy.random.SeedSequence):
-        #     self._seed = self._original_seed.spawn(1)[0]
-        # return
-        pass
-
     def query_item(self, item, time):
         prob = self.compute_probabilities(time=time)[item]
         return (self.rng.random() < prob, prob)
@@ -42,7 +36,6 @@ class GaussianPopulation:
         seed=None,
         **kwargs,
     ):
-
         self.pop_size = population_size
         self.seed = numpy.random.SeedSequence(seed)
         self.n_items = n_items
@@ -70,8 +63,26 @@ class GaussianPopulation:
             )
         raise StopIteration
 
+    def __len__(self):
+        return self.pop_size
 
-def trial(memory_model, schedule, reset=True):
+
+def run_trials(
+    memory_model, schedule, reset=True, test_blocks=None, get_time_info=False
+):
+    if test_blocks is None:
+        return _trial(memory_model, schedule, reset=reset, get_time_info=get_time_info)
+    else:
+        return _trial_test_blocks(
+            memory_model,
+            schedule,
+            test_blocks,
+            reset=reset,
+            get_time_info=get_time_info,
+        )
+
+
+def _trial(memory_model, schedule, reset=True, get_time_info=False):
     """trial applies a schedule to a memory model and gathers queries
 
 
@@ -83,76 +94,113 @@ def trial(memory_model, schedule, reset=True):
     :rtype: list(tuple(boolean, float))
     """
     queries = []
+    times = []
     if reset:
         memory_model.reset()
     for item, time in schedule:
         query = memory_model.query_item(item, time)
         queries.append(query)
         memory_model.update(item, time)
+        times.append(time)
+
+    if get_time_info:
+        return queries, memory_model, times
 
     return queries, memory_model
 
-def trial_test_blocks(memory_model, schedule, test_blocks, reset=True):
+
+def _trial_test_blocks(
+    memory_model, schedule, test_blocks, reset=True, get_time_info=False
+):
     queries = []
+    times = []
     if reset:
         memory_model.reset()
     for n, (item, time) in enumerate(schedule):
-        if int(n/schedule.nitems) in test_blocks: # if recall block
+        if (
+            int(n / (schedule.nitems * schedule.repet_trials)) in test_blocks
+        ):  # if recall block
             query = memory_model.query_item(item, time)
             queries.append(query)
-            # if query[0]:
-            #     memory_model.update(item, time)
-        else: # if learning block
+            times.append(time)
+            if query[0]:
+                memory_model.update(item, time)
+        else:  # if learning block
             memory_model.update(item, time)
+
+    if get_time_info:
+        return queries, memory_model, times
     return queries, memory_model
 
 
-def experiment(population_model, schedule, replications=1):
-    """experiment run a memory experiment with a population model, a fixed schedule, and a set amount of replications per participant
+def experiment(
+    population_model,
+    schedule,
+    replications=1,
+    test_blocks=None,
+    reset=True,
+    get_trial_info=False,
+):
+    if test_blocks is None:
+        schedule_length = len(schedule)
+    else:
+        schedule_length = len(test_blocks) * schedule.nitems * schedule.repet_trials
 
-    Returns simulated data, with an array of shape (replication, 2, len(schedule), population size). The second dimension holds (recall?, recall probability)
-
-    :param population_model: an object that can be iterated over, where each item inherits from MemoryModel
-    :type population_model:
-    :param schedule: _description_
-    :type schedule: inherits from an pyrbit Schedule
-    :param replications: number of replications for each participant, defaults to 1
-    :type replications: int, optional
-    :return: the simulated data
-    :rtype: numpy.array((replication, 2, len(schedule), population size))
-    """
-    data = numpy.zeros((replications, 2, len(schedule), population_model.pop_size))
-
-    for n,memory_model in enumerate(population_model):
-        for i in range(replications):
-            trial_data = numpy.array(trial(memory_model, schedule)[0])
-            data[i, :, :, n] = trial_data.T
-    return data
-
-
-def experiment_test_blocks(population_model, schedule, test_blocks, replications=1):
-    data = numpy.zeros((replications, schedule.nitems, 2, len(test_blocks), population_model.pop_size))
-
-    for n,memory_model in enumerate(population_model):
-        for i in range(replications):
-            trial_data = numpy.array(trial_test_blocks(memory_model, schedule, test_blocks)[0])
-            trial_data = trial_data.reshape(-1,schedule.nitems, 2)
-            
-            data[i, :, :, :, n] = trial_data.transpose(1,2,0)
-    return data.squeeze()
-
-
-def serialize_experiment(data, times):
-    _, block_size = data.shape
-    k_vector = []
-    deltas = []
-    for i in data:
-        k_vector += [k for k in range(-1, block_size - 1)]
-        deltas += [numpy.infty] + numpy.diff(numpy.asarray(times)).tolist()
-    data = data.reshape(
-        -1,
+    data = numpy.zeros(
+        (
+            replications,
+            2,
+            schedule_length,
+            len(population_model),
+        )
     )
-    return data, numpy.asarray(k_vector), numpy.asarray(deltas)
+    trial_info = numpy.zeros(
+        (
+            replications,
+            2,
+            schedule_length,
+            len(population_model),
+        )
+    )
+
+    for n, memory_model in enumerate(population_model):
+        for i in range(replications):
+            trial_data = run_trials(
+                memory_model,
+                schedule,
+                test_blocks=test_blocks,
+                reset=True,
+                get_time_info=get_trial_info,
+            )
+            data[i, :, :, n] = numpy.array(trial_data[0]).T
+            if get_trial_info:
+                trial_info[i, 0, :, n] = list(range(data.shape[2]))
+                trial_info[i, 1, :, n] = trial_data[2]
+    if not get_trial_info:
+        return data
+    return data, trial_info
+
+
+def reshape_experiment(data, nitems, repet_trials, nblocks):
+    _shape = data.shape
+    new_shape = (_shape[0], _shape[1], nblocks, repet_trials, nitems, _shape[-1])
+    return data.reshape(new_shape)
+
+
+# def experiment_test_blocks(population_model, schedule, test_blocks, replications=1):
+#     data = numpy.zeros(
+#         (replications, schedule.nitems, 2, len(test_blocks), population_model.pop_size)
+#     )
+
+#     for n, memory_model in enumerate(population_model):
+#         for i in range(replications):
+#             trial_data = numpy.array(
+#                 trial_test_blocks(memory_model, schedule, test_blocks)[0]
+#             )
+#             trial_data = trial_data.reshape(-1, schedule.nitems, 2)
+
+#             data[i, :, :, :, n] = trial_data.transpose(1, 2, 0)
+#     return data.squeeze()
 
 
 class Schedule:
@@ -172,6 +220,7 @@ class Schedule:
         :type times: numpy array_like
         """
         self.items = items
+        self.nitems = len(set(items))
         self.times = times
         self.max = numpy.array(times).squeeze().shape[0]
 
@@ -207,7 +256,6 @@ class BlockBasedSchedule(Schedule):
         seed=None,
         sigma_t=None,
     ):
-
         self.seed = seed
         self.rng = numpy.random.default_rng(self.seed)
         self.sigma_t = sigma_t
@@ -250,78 +298,83 @@ class BlockBasedSchedule(Schedule):
             t += ibt
 
         return items, times, blocks
-    
+
     def print_schedule(self):
-        for i,t,b in zip(self.items,self.times, self.blocks):
-            print(i,t,b)
-
-
-class Player:
-    def __init__(self, schedule, memory_model):
-        self._schedule = schedule
-        self.memory_model = memory_model
-        self.step_counter = 0
-
-    def reset(self):
-        self.memory_model.reset()
-        self.step_counter = 0
-        self.schedule = iter(self._schedule)
-
-    def step(self, item=True, time=None):
-        if item:
-            self.memory_model.update(*next(self.schedule))
-            return self.memory_model.compute_probabilities()
-        else:
-            return self.memory_model.compute_probabilities(time=time)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        return self.step(item=True)
-
-    def __repr__(self):
-        return f"Schedule: {self.schedule.__repr__()}\n Model: {self.memory_model.__repr__()}"
-
-    def _print_info(self):
-        return self.memory_model._print_info()
-
-
-# class MLEPlayer(Player):
-#     def __init__(self, *args, **kwargs):
-#         self.ll = 0
-
-#     def step(self, recall, item, time):
-#         self.memory_model.compute_probabilities(item=item, time=time)
-#         self.actr_log_likelihood_sample(recall, *next(self.schedule))
-#         self.memory_model.update(*next(self.schedule))
+        print("item, time, block")
+        for i, t, b in zip(self.items, self.times, self.blocks):
+            print(i, t, b)
 
 
 if __name__ == "__main__":
+    # [schedule]
+    from pyrbit.mem_utils import Schedule, BlockBasedSchedule
+
     items = [0, 1, 0, 1, 0, 1, 0, 0]
     times = [0, 100, 126, 200, 252, 500, 4844, 5877]
 
+    # Building a schedule
     schedule = Schedule(items, times)
+    # You can iterate over a schedule
+    for item, time in schedule:
+        print(item, time)
 
-    # # TEST = "PAVLIK2005"
-    # TEST = "EF"
+    # [block-schedule]
+    # You can create a block based schedule, where you specify a constant intertrial time (which includes execution time), interblock times (this also implicitly specifies the number of blocks), and whether items are repeated. You can also add some randomness by adding a random time for each item, drawn from a lognormal distribution with scale sigma_t.
+    schedule = BlockBasedSchedule(
+        5, 5, [10, 20, 30, 30], repet_trials=2, seed=123, sigma_t=1
+    )
+    # you can print the schedule, which also shows block identifiers
+    schedule.print_schedule()
 
-    # if TEST == "PAVLIK2005":
-    #     # testing ACTR_Pavlik_2005
-    #     memory_model = ACTR_Pavlik2005(
-    #         2, a=0.177, c=0.217, s=0.25, tau=-0.7, buffer_size=6
-    #     )
+    # [trial]
+    # You can apply a schedule to a memory model and gather queries using run_trials
+    from pyrbit.ef import ExponentialForgetting
+    from pyrbit.mem_utils import run_trials
 
-    #     player = Player(schedule, memory_model)
-    #     player.reset()
+    ef = ExponentialForgetting(5, 0.01, 0.4, seed=123)
+    queries, ef = run_trials(ef, schedule, reset=True)
+    print(queries)
+    print(ef.counters)
 
-    #     for n, prob in enumerate(player):
-    #         print(prob)
+    # If you have learning blocks distinct from test blocks, you can use the test_blocks argument. This assumes that in a learning block the memory model is always updated, but not queried, while in a testing block, the memory model is always queried, and updated when that query is correct.
+    queries, ef = run_trials(ef, schedule, test_blocks=[1, 3], reset=True)
+    print(queries)
+    print(ef.counters)
 
-    # if TEST == "EF":
-    #     memory_model = ExponentialForgetting(2, a=1e-3, b=0.5)
-    #     player = Player(schedule, memory_model)
-    #     player.reset()
+    # [population]
+    # You can sample from a Gaussian population of memory models. Each memory model will have a different seed that spawns from the population's seed.
+    population_model = GaussianPopulation(
+        ExponentialForgetting,
+        mu=[0.01, 0.4],
+        sigma=1e-3 * numpy.array([[0.1, 0], [0, 1]]),
+        population_size=3,
+        n_items=5,
+        seed=123,
+    )
+    # you can iterate over a population
+    for p in population_model:
+        print(p)
 
-    #     for n, prob in enumerate(player):
-    #         print(prob)
+    # [experiment]
+    # You can perform an experiment, by having members of the population perform trials. The data has shape (replication, 2, schedule_length, population_size); The dimension 2 is for (recall, recall_probability). Note that you can use a list of memory models rather than population objects.
+    data = experiment(population_model, schedule, replications=4)
+
+    population_model = GaussianPopulation(
+        ExponentialForgetting,
+        mu=[0.01, 0.4],
+        sigma=1e-7 * numpy.array([[0.1, 0], [0, 1]]),
+        population_size=4,
+        n_items=5,
+        seed=123,
+    )
+    data = experiment(population_model, schedule, replications=1)
+    data, trials = experiment(
+        population_model,
+        schedule,
+        replications=1,
+        test_blocks=[1, 3, 4],
+        get_trial_info=True,
+    )
+    # You can also reshape the experiment data to have shape (replication, 2, nblocks, repet_trials, nitems, population_size)
+    rdata = reshape_experiment(data, 5, 2, 3)
+
