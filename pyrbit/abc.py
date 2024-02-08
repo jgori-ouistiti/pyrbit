@@ -16,10 +16,8 @@ def simulator_block_ef(
     intertrial_time,
     interblock_time,
     RECALL_BLOCKS,
-    rng,
     ALPHA,
     BETA,
-    size=None,
 ):
     if repet_trials != 1:
         raise NotImplementedError
@@ -27,7 +25,7 @@ def simulator_block_ef(
         raise NotImplementedError
 
     default_population_kwargs = {
-        "mu": [10 ** (ALPHA), BETA],
+        "mu": [ALPHA, BETA],
         "sigma": SIGMA,
         "seed": None,
         "n_items": nitems,
@@ -41,6 +39,7 @@ def simulator_block_ef(
         ExponentialForgetting,
         **default_population_kwargs,
     )
+
     data = experiment_test_blocks(
         population_model, schedule, test_blocks=RECALL_BLOCKS, replications=1
     )
@@ -50,6 +49,54 @@ def simulator_block_ef(
     block_average_mean = numpy.mean(data, axis=0)
     block_std = numpy.std(data, axis=0)
     return numpy.mean(block_average_mean, axis=1)
+
+
+def ef_simulator(
+    repet_trials,
+    nitems,
+    pop_size,
+    replications,
+    intertrial_time,
+    interblock_time,
+    test_blocks,
+    sigma_t,
+    seed,
+    alpha,
+    beta,
+    sigma,
+):
+
+    schedule = BlockBasedSchedule(
+        nitems,
+        intertrial_time,
+        interblock_time,
+        repet_trials=repet_trials,
+        seed=seed,
+        sigma_t=sigma_t,
+    )
+
+    population_model = GaussianPopulation(
+        ExponentialForgetting,
+        mu=[alpha, beta],
+        sigma=sigma,
+        population_size=pop_size,
+        n_items=nitems,
+        seed=seed,
+    )
+
+    # for model in population_model:
+    #     print(model)
+    # exit()
+
+    data_A = experiment(
+        population_model, schedule, test_blocks=test_blocks, replications=replications
+    )
+    data = data_A[0, 0, ...]
+    return (
+        numpy.mean(data, axis=1),  # mean
+        numpy.std(data, axis=1) / numpy.sqrt(data.shape[-1]),  # standard error
+        data,
+    )
 
 
 # def ef_simulator(schedule, population_kwargs):
@@ -73,12 +120,12 @@ def simulator_block_ef(
 #     return data.mean(axis=(0, 2)).squeeze(), data.std(axis=(0, 2)).squeeze(), data
 
 
-def ef_infer_abc(simulation_kwargs, observed_data, simulator_kwargs=None):
+def ef_infer_abc(observed_data, sim, simulator_kwargs=None):
     sim_kwargs = {
         "epsilon": 0.01,
         "observed": observed_data,
         "distance": "gaussian",
-        "sum_stat": "sort",
+        "sum_stat": "identity",
         "ndims_params": [0, 0],
     }
     if simulator_kwargs is not None:
@@ -87,20 +134,9 @@ def ef_infer_abc(simulation_kwargs, observed_data, simulator_kwargs=None):
     with pymc.Model() as _model:
         a = pymc.Uniform("log10alpha", -6, -0.5)
         b = pymc.Uniform("b", 0.01, 0.99)
-        # a = pymc.Uniform('log10alpha', -4,-.1)
-        # b = pymc.Uniform('b', .1, .9)
-        sim = functools.partial(
-            simulator_block_ef,
-            simulation_kwargs["SIGMA"],
-            simulation_kwargs["repet_trials"],
-            simulation_kwargs["nitems"],
-            simulation_kwargs["pop_size"],
-            simulation_kwargs["replications"],
-            simulation_kwargs["intertrial_time"],
-            simulation_kwargs["interblock_time"],
-            simulation_kwargs["RECALL_BLOCKS"],
-        )
+
         s = pymc.Simulator("s", sim, params=(a, b), **sim_kwargs)
+
         idata = pymc.sample_smc(parallel=True, kernel="ABC")
         idata.extend(pymc.sample_posterior_predictive(idata))
 
@@ -121,3 +157,21 @@ def plot_ihd_contours(idata, ax=None):
         legend=False,
     )
     return ax
+
+
+if __name__ == "__main__":
+
+    data = numpy.random.normal(loc=0, scale=1, size=1000)
+
+    def normal_sim(rng, a, b, size=1000):
+        return rng.normal(a, b, size=size)
+
+    with pymc.Model() as example:
+        a = pymc.Normal("a", mu=0, sigma=5)
+        b = pymc.HalfNormal("b", sigma=1)
+        s = pymc.Simulator(
+            "s", normal_sim, params=(a, b), sum_stat="sort", epsilon=1, observed=data
+        )
+
+        idata = pymc.sample_smc()
+        idata.extend(pymc.sample_posterior_predictive(idata))

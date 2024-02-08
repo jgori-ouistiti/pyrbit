@@ -55,6 +55,35 @@ class ACTR(MemoryModel):
             self.counter_pres[item] += len(time)
 
 
+# helper functions for simulations
+def simulate_arbitrary_traj(actr, N, seed=None):
+    recall = []
+    times = []
+    query_times = []
+    rng = numpy.random.default_rng(seed=seed)
+
+    for trial in range(N):
+        actr.reset()
+        nrepet = rng.integers(low=1, high=10, size=(1,))
+        _times = numpy.sort(rng.random(size=(int(nrepet),)) * 100)
+        times.append(_times)
+        actr.update(0, _times)
+        query_time = rng.random(size=(1,)) * 100 + _times[-1]
+        query_times.append(query_time)
+        recall.append(actr.query_item(0, query_time))
+    return recall, times, query_times
+
+
+def gen_data(actr_model, N, seed=None):
+    recalls, times, query_times = simulate_arbitrary_traj(actr_model, N, seed=seed)
+    recalls = [int(r[0]) for r in recalls]
+    deltatis = [qtime - time for time, qtime in zip(times, query_times)]
+    return recalls, deltatis
+
+
+## visualisations
+
+
 def diagnostics(d, deltatis, recall, ax=None, **kwargs):
     return logregplot(d, deltatis, recall, ax=None, **kwargs)
 
@@ -69,6 +98,9 @@ def logregplot(d, deltatis, recall, ax=None, label_prefix="", **kwargs):
     return _logregplot_activation(
         activation, recall, ax=ax, x_bins=x_bins, label_prefix=label_prefix, **kwargs
     )
+
+
+## inference
 
 
 def identify_actr_from_recall_sequence(
@@ -404,6 +436,7 @@ if __name__ == "__main__":
         diagnostics,
         actr_observed_information_matrix,
         identify_actr_from_recall_sequence,
+        gen_data,
     )
 
     import numpy
@@ -416,30 +449,6 @@ if __name__ == "__main__":
     tau = -0.7
     s = 0.25
     rng = numpy.random.default_rng(seed=SEED)
-
-    # helper functions for simulations
-    def simulate_arbitrary_traj(actr, N, seed=None):
-        recall = []
-        times = []
-        query_times = []
-        rng = numpy.random.default_rng(seed=seed)
-
-        for trial in range(N):
-            actr.reset()
-            nrepet = rng.integers(low=1, high=10, size=(1,))
-            _times = numpy.sort(rng.random(size=(int(nrepet),)) * 100)
-            times.append(_times)
-            actr.update(0, _times)
-            query_time = rng.random(size=(1,)) * 100 + _times[-1]
-            query_times.append(query_time)
-            recall.append(actr.query_item(0, query_time))
-        return recall, times, query_times
-
-    def gen_data(actr_model, N, seed=None):
-        recalls, times, query_times = simulate_arbitrary_traj(actr_model, N, seed=seed)
-        recalls = [int(r[0]) for r in recalls]
-        deltatis = [qtime - time for time, qtime in zip(times, query_times)]
-        return recalls, deltatis
 
     # ==================== Simulate some data
     actr = ACTR(1, 0.5, 0.25, -0.7, buffer_size=16, seed=SEED)

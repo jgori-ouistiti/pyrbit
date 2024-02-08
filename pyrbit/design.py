@@ -101,24 +101,41 @@ def get_p_value_diff(
     test_blocks=None,
     **kwargs
 ):
-    mr_A, mr_B = diff_eval_block_percentages(
+    df, mr_A, mr_B = diff_eval_block_percentages(
         population_model_one,
         population_model_two,
         schedule,
-        test_blocks=[1, 3, 5, 6, 8],
-        output_df=False,
+        test_blocks=test_blocks,
+        output_df=True,
     )
+
+    # import seaborn
+    # import matplotlib.pyplot as plt
+
+    # fix, ax = plt.subplots(nrows=1, ncols=1)
+    # seaborn.barplot(
+    #     data=df,
+    #     x="block",
+    #     y="block recall %",
+    #     hue="Condition",
+    #     errorbar="se",
+    #     ax=ax,
+    # )
+    # plt.show()
 
     p = numpy.zeros(
         len(combine_pvalues),
     )
     for n, combine_pvalue in enumerate(combine_pvalues):
         if combine_pvalue in ["fisher", "stouffer"]:
-            pvalues = scipy.stats.ttest_rel(mr_A[0, :], mr_B[0, :], axis=0).pvalue[1:]
+            # pvalues = scipy.stats.ttest_rel(mr_A[0, :], mr_B[0, :], axis=0).pvalue[1:]
+            pvalues = scipy.stats.ttest_rel(mr_A[0, ...], mr_B[0, ...], axis=1).pvalue[
+                1:
+            ]
             p[n] = scipy.stats.combine_pvalues(pvalues, method=combine_pvalue).pvalue
 
         else:
-            p[n] = combine_pvalue(mr_A[0, :], mr_B[0, :], **kwargs)
+            p[n] = combine_pvalue(mr_A[0, ...], mr_B[0, ...], **kwargs)
 
     return p
 
@@ -145,12 +162,11 @@ def get_p_values_frequency(
             combine_pvalues=combine_pvalues,
             test_blocks=test_blocks,
         )
-    print(p_value_container.shape)
 
     positives = numpy.sum(p_value_container < significance_level, axis=0)
     positive_rate = positives / len(p_value_container)
     negative_rate = 1 - positive_rate
-    return positive_rate, negative_rate
+    return positive_rate, negative_rate, p_value_container
 
 
 if __name__ == "__main__":
@@ -179,15 +195,13 @@ if __name__ == "__main__":
     population_model = [
         ExponentialForgetting(1, 10 ** (-2.5), 0.75, seed=None) for i in range(200)
     ]
-   
+
     data = experiment(
         population_model,
         schedule,
         test_blocks=[1, 3, 5, 6, 8],
         replications=1,
     )
-
-
 
     # [diff-block-percentage]
 
@@ -196,7 +210,7 @@ if __name__ == "__main__":
         ExponentialForgetting,
         mu=[10 ** (-2.5), 0.75],
         sigma=1e-7 * numpy.array([[0.01, 0], [0, 1]]),
-        population_size=24*16,
+        population_size=24 * 16,
         n_items=1,
         seed=None,
     )
@@ -205,7 +219,7 @@ if __name__ == "__main__":
         ExponentialForgetting,
         mu=[10 ** (-2.5), 0.75],
         sigma=1e-7 * numpy.array([[0.01, 0], [0, 1]]),
-        population_size=24*16,
+        population_size=24 * 16,
         n_items=1,
         seed=None,
     )
@@ -247,7 +261,7 @@ if __name__ == "__main__":
 
     # [power analysis]
     # Empirical Statistical power analysis
-    REPETITIONS = 1000
+    REPETITIONS = 100
 
     # Case 1: Equal RBITs, should find statistical significance alpha=0.05 at 5%
     population_model_one = [
@@ -255,7 +269,7 @@ if __name__ == "__main__":
             ExponentialForgetting,
             mu=[10 ** (-2), 0.75],
             sigma=1e-7 * numpy.array([[0.01, 0], [0, 1]]),
-            population_size=24*16,
+            population_size=24,
             n_items=1,
             seed=None,
         )
@@ -266,7 +280,7 @@ if __name__ == "__main__":
             ExponentialForgetting,
             mu=[10 ** (-2), 0.75],
             sigma=1e-7 * numpy.array([[0.01, 0], [0, 1]]),
-            population_size=24*16,
+            population_size=24,
             n_items=1,
             seed=None,
         )
@@ -276,16 +290,16 @@ if __name__ == "__main__":
     # Define here custom methods to compute p values from mean recalls
     # compute the average of p values
     def mean_pvalue(mr_A, mr_B, **kwargs):
-        pvalues = scipy.stats.ttest_rel(mr_A, mr_B, axis=0).pvalue[1:]
+        pvalues = scipy.stats.ttest_rel(mr_A, mr_B, axis=1).pvalue[1:]
         return numpy.mean(pvalues)
 
     # Bonferonni-like correction
     def bonf(mr_A, mr_B, **kwargs):
-        pvalues = scipy.stats.ttest_rel(mr_A, mr_B, axis=0).pvalue[1:]
+        pvalues = scipy.stats.ttest_rel(mr_A, mr_B, axis=1).pvalue[1:]
         return numpy.min(pvalues) * len(pvalues)
 
     # Fisher and Stouffer methods can be called by their names to trigger their scipy implementation
-    pos_one, neg_one = get_p_values_frequency(
+    pos_one, neg_one, p_container = get_p_values_frequency(
         population_model_one,
         population_model_two,
         schedule,
@@ -293,7 +307,6 @@ if __name__ == "__main__":
         test_blocks=None,
         significance_level=0.05,
     )
-
     # Type 1 errors: we reject the null that there is no difference in RBITs but there was actually none
     type1error = pos_one
 
@@ -303,7 +316,7 @@ if __name__ == "__main__":
             ExponentialForgetting,
             mu=[10 ** (-2.3), 0.75],
             sigma=1e-5 * numpy.array([[0.01, 0], [0, 1]]),
-            population_size=24*16,
+            population_size=24,
             n_items=1,
             seed=None,
         )
@@ -314,14 +327,14 @@ if __name__ == "__main__":
             ExponentialForgetting,
             mu=[10 ** (-2), 0.75],
             sigma=1e-5 * numpy.array([[0.01, 0], [0, 1]]),
-            population_size=24*16,
+            population_size=24,
             n_items=1,
             seed=None,
         )
         for i in range(REPETITIONS)
     ]
 
-    pos_two, neg_two = get_p_values_frequency(
+    pos_two, neg_two, p_container = get_p_values_frequency(
         population_model_one,
         population_model_two,
         schedule,
