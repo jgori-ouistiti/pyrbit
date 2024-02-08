@@ -20,11 +20,11 @@ sys.path.insert(0, os.path.abspath(".."))
 # -- Project information -----------------------------------------------------
 
 project = "PyRBIT"
-copyright = "2023, anon"
+copyright = "2024, Julien Gori"
 author = "Julien Gori"
 
 # The full version, including alpha/beta/rc tags
-release = "0.3.0"
+release = "0.1.0"
 
 
 # -- General configuration ---------------------------------------------------
