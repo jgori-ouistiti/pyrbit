@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pyrbit.ef &mdash; PyRBIT 0.1.1 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            PyRBIT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">See also</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">    Home page</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ef.html">Exponential Forgetting Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../actr.html">ACT-R Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../memory.html">Memory Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../information.html">Evaluating the informativeness of a schedule</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../design.html">Comparing block recall percentages, power analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_autosummary/pyrbit.html">API reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">PyRBIT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pyrbit.ef</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pyrbit.ef</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">pyrbit.mem_utils</span> <span class="kn">import</span> <span class="n">MemoryModel</span>
+<span class="kn">from</span> <span class="nn">pyrbit.plot_utils</span> <span class="kn">import</span> <span class="n">regplot</span>
+<span class="kn">from</span> <span class="nn">pyrbit.mle_utils</span> <span class="kn">import</span> <span class="n">mle_sequence</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">pandas</span>
+<span class="kn">import</span> <span class="nn">statsmodels.formula.api</span> <span class="k">as</span> <span class="nn">smf</span>
+<span class="kn">import</span> <span class="nn">seaborn</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+
+<div class="viewcode-block" id="ExponentialForgetting"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.ExponentialForgetting.html#pyrbit.ef.ExponentialForgetting">[docs]</a><span class="k">class</span> <span class="nc">ExponentialForgetting</span><span class="p">(</span><span class="n">MemoryModel</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nitems</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">max_a</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">min_a</span><span class="o">=</span><span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mi">6</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">nitems</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">a</span> <span class="o">&gt;</span> <span class="n">max_a</span> <span class="ow">or</span> <span class="n">a</span> <span class="o">&lt;</span> <span class="n">min_a</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;value a = </span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s2"> is outside admissible range (</span><span class="si">{</span><span class="n">min_a</span><span class="si">}</span><span class="s2"> &lt; a &lt; </span><span class="si">{</span><span class="n">max_a</span><span class="si">}</span><span class="s2">). I am clipping it&quot;</span>
+            <span class="p">)</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">min_a</span><span class="p">,</span> <span class="n">max_a</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">a</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">a</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="n">a</span>
+        <span class="k">if</span> <span class="n">b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="n">b</span>
+
+        <span class="c1"># self.counters is number of presentations, not repetitions</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">counters</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">nitems</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">counters</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">numpy</span><span class="o">.</span><span class="n">inf</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">counters</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n_items</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">counters</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">counters</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">N</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">counters</span><span class="p">[</span><span class="n">item</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">counters</span><span class="p">[</span><span class="n">item</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counters</span><span class="p">[</span><span class="n">item</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">time</span>
+
+    <span class="k">def</span> <span class="nf">_print_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;counters: </span><span class="se">\t</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">counters</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">compute_probabilities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">time</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">time</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">counters</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">counters</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">deltat</span> <span class="o">=</span> <span class="n">time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">counters</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">deltat</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="se">\n</span><span class="s2"> a = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">a</span><span class="si">}</span><span class="se">\n</span><span class="s2"> b = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+<div class="viewcode-block" id="identify_ef_from_recall_sequence"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.identify_ef_from_recall_sequence.html#pyrbit.ef.identify_ef_from_recall_sequence">[docs]</a><span class="k">def</span> <span class="nf">identify_ef_from_recall_sequence</span><span class="p">(</span>
+    <span class="n">recall_sequence</span><span class="p">,</span>
+    <span class="n">deltas</span><span class="p">,</span>
+    <span class="n">k_vector</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">guess</span><span class="o">=</span><span class="p">(</span><span class="mf">1e-3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span>
+    <span class="n">optim_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;L-BFGS-B&quot;</span><span class="p">,</span> <span class="s2">&quot;bounds&quot;</span><span class="p">:</span> <span class="p">[(</span><span class="mf">1e-7</span><span class="p">,</span> <span class="mf">5e-1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">)]},</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">basin_hopping</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">basin_hopping_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="n">infer_results</span> <span class="o">=</span> <span class="n">mle_sequence</span><span class="p">(</span>
+        <span class="n">_ef_get_sequence_likelihood</span><span class="p">,</span>
+        <span class="n">optim_kwargs</span><span class="p">,</span>
+        <span class="n">guess</span><span class="p">,</span>
+        <span class="n">deltas</span><span class="p">,</span>
+        <span class="n">recall_sequence</span><span class="p">,</span>
+        <span class="n">k_vector</span><span class="p">,</span>
+        <span class="n">basin_hopping</span><span class="o">=</span><span class="n">basin_hopping</span><span class="p">,</span>
+        <span class="n">basin_hopping_kwargs</span><span class="o">=</span><span class="n">basin_hopping_kwargs</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">infer_results</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">infer_results</span></div>
+
+
+<div class="viewcode-block" id="covar_delta_method_log_alpha"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.covar_delta_method_log_alpha.html#pyrbit.ef.covar_delta_method_log_alpha">[docs]</a><span class="k">def</span> <span class="nf">covar_delta_method_log_alpha</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">var</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;var should be inverse of J observed information matrix&quot;&quot;&quot;</span>
+    <span class="n">grad</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">1</span> <span class="o">/</span> <span class="n">alpha</span> <span class="o">/</span> <span class="n">numpy</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]])</span>
+    <span class="k">return</span> <span class="n">grad</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">var</span> <span class="o">@</span> <span class="n">grad</span></div>
+
+
+<div class="viewcode-block" id="ef_observed_information_matrix"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.ef_observed_information_matrix.html#pyrbit.ef.ef_observed_information_matrix">[docs]</a><span class="k">def</span> <span class="nf">ef_observed_information_matrix</span><span class="p">(</span><span class="n">recall_sequence</span><span class="p">,</span> <span class="n">deltas</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k_vector</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_ef_get_sequence_observed_information_matrix</span><span class="p">(</span>
+        <span class="n">recall_sequence</span><span class="p">,</span> <span class="n">deltas</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k_vector</span><span class="o">=</span><span class="n">k_vector</span>
+    <span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="diagnostics"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.diagnostics.html#pyrbit.ef.diagnostics">[docs]</a><span class="k">def</span> <span class="nf">diagnostics</span><span class="p">(</span>
+    <span class="n">alpha</span><span class="p">,</span>
+    <span class="n">beta</span><span class="p">,</span>
+    <span class="n">k_repetition</span><span class="p">,</span>
+    <span class="n">deltas</span><span class="p">,</span>
+    <span class="n">recall</span><span class="p">,</span>
+    <span class="n">exponent_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">loglogplot_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="n">_exponent_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;xbins&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">deltas</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="mi">3</span><span class="p">)),</span> <span class="s2">&quot;inf_to_int&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">10</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">exponent_kwargs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">_exponent_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">exponent_kwargs</span><span class="p">)</span>
+
+    <span class="n">_loglogplot_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">loglogplot_kwargs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">_loglogplot_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">loglogplot_kwargs</span><span class="p">)</span>
+
+    <span class="n">exponent</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="o">-</span><span class="n">alpha</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">beta</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span> <span class="k">for</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">k_repetition</span><span class="p">,</span> <span class="n">deltas</span><span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">,</span> <span class="n">regplot</span> <span class="o">=</span> <span class="n">plot_exponent_scatter</span><span class="p">(</span><span class="n">exponent</span><span class="p">,</span> <span class="n">recall</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">axs</span><span class="p">,</span> <span class="o">**</span><span class="n">_exponent_kwargs</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+    <span class="n">fg</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">estim</span> <span class="o">=</span> <span class="n">loglogpplot</span><span class="p">(</span><span class="n">k_repetition</span><span class="p">,</span> <span class="n">recall</span><span class="p">,</span> <span class="n">deltas</span><span class="p">,</span> <span class="o">**</span><span class="n">_loglogplot_kwargs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">fg</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">estim</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="flatten"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.flatten.html#pyrbit.ef.flatten">[docs]</a><span class="k">def</span> <span class="nf">flatten</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">,</span>
+    <span class="n">schedule</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">population_model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">test_blocks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">get_k_delta</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">replications</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="k">if</span> <span class="n">replications</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;not supported yet&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">get_k_delta</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">test_blocks</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">k</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">get_k_delta_schedule</span><span class="p">(</span><span class="n">schedule</span><span class="p">)</span>
+
+        <span class="n">k</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="p">(</span><span class="n">replications</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">population_model</span><span class="p">),</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">k</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">d</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="p">(</span><span class="n">replications</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">population_model</span><span class="p">),</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">k</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">get_k_delta_schedule</span><span class="p">(</span><span class="n">schedule</span><span class="p">,</span> <span class="n">test_blocks</span><span class="o">=</span><span class="n">test_blocks</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">k</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">population_model</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_blocks</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">d</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">population_model</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_blocks</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
+
+    <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">d</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">k</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="get_k_delta_schedule"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.get_k_delta_schedule.html#pyrbit.ef.get_k_delta_schedule">[docs]</a><span class="k">def</span> <span class="nf">get_k_delta_schedule</span><span class="p">(</span><span class="n">schedule</span><span class="p">,</span> <span class="n">test_blocks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">test_blocks</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_get_k_delta_schedule_no_test_blocks</span><span class="p">(</span><span class="n">schedule</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_get_k_delta_schedule_test_blocks</span><span class="p">(</span>
+            <span class="n">schedule</span><span class="p">,</span> <span class="n">test_blocks</span><span class="o">=</span><span class="n">test_blocks</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span>
+        <span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_get_k_delta_schedule_no_test_blocks</span><span class="p">(</span><span class="n">schedule</span><span class="p">):</span>
+    <span class="n">counter</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">):</span> <span class="o">-</span><span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">schedule</span><span class="o">.</span><span class="n">nitems</span><span class="p">)}</span>
+    <span class="n">timer</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">):</span> <span class="o">-</span><span class="n">numpy</span><span class="o">.</span><span class="n">inf</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">schedule</span><span class="o">.</span><span class="n">nitems</span><span class="p">)}</span>
+    <span class="n">k_vec</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">delta_vec</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">item</span><span class="p">,</span> <span class="n">time</span> <span class="ow">in</span> <span class="n">schedule</span><span class="p">:</span>
+        <span class="n">k_vec</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">counter</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="p">)])</span>
+        <span class="n">delta_vec</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time</span> <span class="o">-</span> <span class="n">timer</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="p">)])</span>
+        <span class="n">counter</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">timer</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="p">)]</span> <span class="o">=</span> <span class="n">time</span>
+    <span class="k">return</span> <span class="n">k_vec</span><span class="p">,</span> <span class="n">delta_vec</span>
+
+
+<span class="k">def</span> <span class="nf">_get_k_delta_schedule_test_blocks</span><span class="p">(</span><span class="n">schedule</span><span class="p">,</span> <span class="n">test_blocks</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="n">recall</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">k_vec</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">delta_vec</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">recall</span><span class="p">:</span>
+        <span class="n">counter</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">):</span> <span class="o">-</span><span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">schedule</span><span class="o">.</span><span class="n">nitems</span><span class="p">)}</span>
+        <span class="n">timer</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">):</span> <span class="o">-</span><span class="n">numpy</span><span class="o">.</span><span class="n">inf</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">schedule</span><span class="o">.</span><span class="n">nitems</span><span class="p">)}</span>
+
+        <span class="n">nr</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">schedule</span><span class="p">):</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n</span> <span class="o">/</span> <span class="p">(</span><span class="n">schedule</span><span class="o">.</span><span class="n">nitems</span> <span class="o">*</span> <span class="n">schedule</span><span class="o">.</span><span class="n">repet_trials</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">test_blocks</span><span class="p">:</span>
+                <span class="n">k_vec</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">counter</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="p">)])</span>
+                <span class="n">delta_vec</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time</span> <span class="o">-</span> <span class="n">timer</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="p">)])</span>
+                <span class="k">if</span> <span class="n">r</span><span class="p">[</span><span class="n">nr</span><span class="p">]:</span>
+                    <span class="n">counter</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">timer</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="p">)]</span> <span class="o">=</span> <span class="n">time</span>
+                <span class="n">nr</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">counter</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">timer</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="p">)]</span> <span class="o">=</span> <span class="n">time</span>
+
+    <span class="k">return</span> <span class="n">k_vec</span><span class="p">,</span> <span class="n">delta_vec</span>
+
+
+<span class="c1"># def serialize_experiment(data, times):</span>
+<span class="c1">#     _, block_size = data.shape</span>
+<span class="c1">#     k_vector = []</span>
+<span class="c1">#     deltas = []</span>
+<span class="c1">#     for i in data:</span>
+<span class="c1">#         k_vector += [k for k in range(-1, block_size - 1)]</span>
+<span class="c1">#         deltas += [numpy.infty] + numpy.diff(numpy.asarray(times)).tolist()</span>
+<span class="c1">#     data = data.reshape(</span>
+<span class="c1">#         -1,</span>
+<span class="c1">#     )</span>
+<span class="c1">#     return data, numpy.asarray(k_vector), numpy.asarray(deltas)</span>
+
+
+<span class="c1">## ============ for observed information matrix ============= ##</span>
+<span class="c1">## p1, q1, p0, q0</span>
+<div class="viewcode-block" id="ef_p1_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.ef_p1_sample.html#pyrbit.ef.ef_p1_sample">[docs]</a><span class="k">def</span> <span class="nf">ef_p1_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">ef_q1_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="ef_p0_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.ef_p0_sample.html#pyrbit.ef.ef_p0_sample">[docs]</a><span class="k">def</span> <span class="nf">ef_p0_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">):</span>
+    <span class="k">return</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">ef_p1_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ef_q1_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.ef_q1_sample.html#pyrbit.ef.ef_q1_sample">[docs]</a><span class="k">def</span> <span class="nf">ef_q1_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">):</span>
+    <span class="k">return</span> <span class="o">-</span><span class="n">alpha</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">beta</span><span class="p">)</span> <span class="o">**</span> <span class="n">k</span> <span class="o">*</span> <span class="n">deltat</span></div>
+
+
+<div class="viewcode-block" id="ef_q0_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.ef_q0_sample.html#pyrbit.ef.ef_q0_sample">[docs]</a><span class="k">def</span> <span class="nf">ef_q0_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">ef_q1_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">)))</span></div>
+
+
+<span class="c1">## first order derivatives</span>
+<div class="viewcode-block" id="ef_dq1_dalpha_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.ef_dq1_dalpha_sample.html#pyrbit.ef.ef_dq1_dalpha_sample">[docs]</a><span class="k">def</span> <span class="nf">ef_dq1_dalpha_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">):</span>
+    <span class="k">return</span> <span class="o">-</span><span class="p">((</span><span class="mi">1</span> <span class="o">-</span> <span class="n">beta</span><span class="p">)</span> <span class="o">**</span> <span class="n">k</span><span class="p">)</span> <span class="o">*</span> <span class="n">deltat</span></div>
+
+
+<div class="viewcode-block" id="ef_dq1_dbeta_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.ef_dq1_dbeta_sample.html#pyrbit.ef.ef_dq1_dbeta_sample">[docs]</a><span class="k">def</span> <span class="nf">ef_dq1_dbeta_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">k</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">beta</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">deltat</span></div>
+
+
+<div class="viewcode-block" id="ef_dq0_dalpha_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.ef_dq0_dalpha_sample.html#pyrbit.ef.ef_dq0_dalpha_sample">[docs]</a><span class="k">def</span> <span class="nf">ef_dq0_dalpha_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">beta</span><span class="p">)</span> <span class="o">**</span> <span class="n">k</span>
+        <span class="o">*</span> <span class="n">deltat</span>
+        <span class="o">*</span> <span class="n">ef_p1_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">)</span>
+        <span class="o">/</span> <span class="n">ef_p0_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ef_dq0_dbeta_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.ef_dq0_dbeta_sample.html#pyrbit.ef.ef_dq0_dbeta_sample">[docs]</a><span class="k">def</span> <span class="nf">ef_dq0_dbeta_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="o">-</span><span class="n">k</span>
+        <span class="o">*</span> <span class="n">alpha</span>
+        <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">beta</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="o">*</span> <span class="n">deltat</span>
+        <span class="o">*</span> <span class="n">ef_p1_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">)</span>
+        <span class="o">/</span> <span class="n">ef_p0_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+<span class="c1">## Second order derivatives</span>
+
+
+<div class="viewcode-block" id="ef_ddq1_dalpha_dalpha_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.ef_ddq1_dalpha_dalpha_sample.html#pyrbit.ef.ef_ddq1_dalpha_dalpha_sample">[docs]</a><span class="k">def</span> <span class="nf">ef_ddq1_dalpha_dalpha_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">):</span>
+    <span class="c1"># return __sym_ef_ddq1_dalpha_dalpha_sample(alpha, beta, k, deltat)</span>
+    <span class="k">return</span> <span class="mi">0</span></div>
+
+
+<div class="viewcode-block" id="ef_ddq1_dalpha_dbeta_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.ef_ddq1_dalpha_dbeta_sample.html#pyrbit.ef.ef_ddq1_dalpha_dbeta_sample">[docs]</a><span class="k">def</span> <span class="nf">ef_ddq1_dalpha_dbeta_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">):</span>
+    <span class="c1"># return __sym_ef_ddq1_dalpha_dbeta_sample(alpha, beta, k, deltat)</span>
+    <span class="k">return</span> <span class="n">k</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">beta</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">deltat</span></div>
+
+
+<div class="viewcode-block" id="ef_ddq1_dbeta_dbeta_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.ef_ddq1_dbeta_dbeta_sample.html#pyrbit.ef.ef_ddq1_dbeta_dbeta_sample">[docs]</a><span class="k">def</span> <span class="nf">ef_ddq1_dbeta_dbeta_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">):</span>
+    <span class="c1"># return __sym_ef_ddq1_dbeta_dbeta_sample(alpha, beta, k, deltat)</span>
+    <span class="k">return</span> <span class="o">-</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">k</span> <span class="o">*</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">beta</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">deltat</span></div>
+
+
+<div class="viewcode-block" id="ef_ddq0_dalpha_dalpha_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.ef_ddq0_dalpha_dalpha_sample.html#pyrbit.ef.ef_ddq0_dalpha_dalpha_sample">[docs]</a><span class="k">def</span> <span class="nf">ef_ddq0_dalpha_dalpha_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">):</span>
+    <span class="c1"># return __sym_ef_ddq0_dalpha_dalpha_sample(alpha, beta, k, deltat)</span>
+    <span class="k">if</span> <span class="n">deltat</span> <span class="o">==</span> <span class="n">numpy</span><span class="o">.</span><span class="n">inf</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+    <span class="k">with</span> <span class="n">numpy</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s2">&quot;raise&quot;</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="o">-</span><span class="p">((</span><span class="mi">1</span> <span class="o">-</span> <span class="n">beta</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">k</span><span class="p">))</span>
+                <span class="o">*</span> <span class="n">deltat</span><span class="o">**</span><span class="mi">2</span>
+                <span class="o">*</span> <span class="p">(</span>
+                    <span class="n">ef_p1_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">)</span>
+                    <span class="o">/</span> <span class="n">ef_p0_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">FloatingPointError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mi">1</span> <span class="o">/</span> <span class="n">alpha</span><span class="o">**</span><span class="mi">2</span></div>
+
+
+<div class="viewcode-block" id="ef_ddq0_dalpha_dbeta_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.ef_ddq0_dalpha_dbeta_sample.html#pyrbit.ef.ef_ddq0_dalpha_dbeta_sample">[docs]</a><span class="k">def</span> <span class="nf">ef_ddq0_dalpha_dbeta_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">):</span>
+    <span class="c1"># return __sym_ef_ddq0_dalpha_dbeta_sample(alpha, beta, k, deltat)</span>
+    <span class="k">if</span> <span class="n">deltat</span> <span class="o">==</span> <span class="n">numpy</span><span class="o">.</span><span class="n">inf</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+    <span class="k">with</span> <span class="n">numpy</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s2">&quot;raise&quot;</span><span class="p">,</span> <span class="n">invalid</span><span class="o">=</span><span class="s2">&quot;raise&quot;</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="o">-</span><span class="n">k</span>
+                <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">beta</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="o">*</span> <span class="n">deltat</span>
+                <span class="o">*</span> <span class="n">ef_p1_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">)</span>
+                <span class="o">/</span> <span class="n">ef_p0_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">)</span>
+                <span class="o">+</span> <span class="n">alpha</span>
+                <span class="o">*</span> <span class="n">k</span>
+                <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">beta</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="o">*</span> <span class="n">deltat</span><span class="o">**</span><span class="mi">2</span>
+                <span class="o">*</span> <span class="n">ef_p1_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">)</span>
+                <span class="o">/</span> <span class="n">ef_p0_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">FloatingPointError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span></div>
+
+
+<div class="viewcode-block" id="ef_ddq0_dbeta_dbeta_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.ef_ddq0_dbeta_dbeta_sample.html#pyrbit.ef.ef_ddq0_dbeta_dbeta_sample">[docs]</a><span class="k">def</span> <span class="nf">ef_ddq0_dbeta_dbeta_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">):</span>
+    <span class="c1"># return __sym_ef_ddq0_dbeta_dbeta_sample(alpha, beta, k, deltat)</span>
+    <span class="k">if</span> <span class="n">deltat</span> <span class="o">==</span> <span class="n">numpy</span><span class="o">.</span><span class="n">inf</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+    <span class="k">with</span> <span class="n">numpy</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s2">&quot;raise&quot;</span><span class="p">,</span> <span class="n">invalid</span><span class="o">=</span><span class="s2">&quot;raise&quot;</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="n">alpha</span>
+                <span class="o">*</span> <span class="n">k</span>
+                <span class="o">*</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">beta</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
+                <span class="o">*</span> <span class="n">deltat</span>
+                <span class="o">*</span> <span class="n">ef_p1_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">)</span>
+                <span class="o">/</span> <span class="n">ef_p0_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">)</span>
+                <span class="o">-</span> <span class="n">alpha</span><span class="o">**</span><span class="mi">2</span>
+                <span class="o">*</span> <span class="n">k</span><span class="o">**</span><span class="mi">2</span>
+                <span class="o">*</span> <span class="n">deltat</span><span class="o">**</span><span class="mi">2</span>
+                <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">beta</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">k</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
+                <span class="o">*</span> <span class="n">ef_p1_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">)</span>
+                <span class="o">/</span> <span class="n">ef_p0_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">FloatingPointError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="n">k</span> <span class="o">*</span> <span class="p">(</span><span class="n">k</span> <span class="o">*</span> <span class="n">beta</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">beta</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_ef_log_likelihood_sample</span><span class="p">(</span><span class="n">recall</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltat</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">transform</span><span class="p">):</span>
+    <span class="c1"># rescaling value to linear</span>
+    <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">transform</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">recall</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># Warning: passing to array converts recall to float</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">a</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span> <span class="o">**</span> <span class="n">k</span> <span class="o">*</span> <span class="n">deltat</span>
+    <span class="k">elif</span> <span class="n">recall</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">numpy</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">over</span><span class="o">=</span><span class="s2">&quot;raise&quot;</span><span class="p">,</span> <span class="n">invalid</span><span class="o">=</span><span class="s2">&quot;raise&quot;</span><span class="p">,</span> <span class="n">divide</span><span class="o">=</span><span class="s2">&quot;raise&quot;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">exp</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">a</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span> <span class="o">**</span> <span class="n">k</span> <span class="o">*</span> <span class="n">deltat</span><span class="p">)</span>
+
+                <span class="c1"># exp = numpy.clip(exp, a_min=0, a_max=1 - 1e-4)</span>
+                <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">exp</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">FloatingPointError</span><span class="p">:</span>
+                <span class="k">return</span> <span class="o">-</span><span class="mf">1e6</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Recall is not 0 or 1, but is </span><span class="si">{</span><span class="n">recall</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_ef_get_sequence_likelihood</span><span class="p">(</span>
+    <span class="n">theta</span><span class="p">,</span>
+    <span class="n">deltas</span><span class="p">,</span>
+    <span class="n">recalls</span><span class="p">,</span>
+    <span class="n">k_vector</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="n">transform</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">__ef_get_sequence_likelihood_with_transform</span><span class="p">(</span>
+        <span class="n">theta</span><span class="p">,</span>
+        <span class="n">deltas</span><span class="p">,</span>
+        <span class="n">recalls</span><span class="p">,</span>
+        <span class="n">k_vector</span><span class="o">=</span><span class="n">k_vector</span><span class="p">,</span>
+        <span class="n">transform</span><span class="o">=</span><span class="n">transform</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_ef_get_sequence_observed_information_matrix</span><span class="p">(</span>
+    <span class="n">recall_sequence</span><span class="p">,</span> <span class="n">deltas</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k_vector</span><span class="o">=</span><span class="kc">None</span>
+<span class="p">):</span>
+    <span class="n">J_11</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">J_12</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">J_22</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">k_vector</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">k_vector</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">deltas</span><span class="p">)))</span>
+
+    <span class="k">for</span> <span class="n">recall</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">recall_sequence</span><span class="p">,</span> <span class="n">deltas</span><span class="p">,</span> <span class="n">k_vector</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">recall</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">J_11</span> <span class="o">+=</span> <span class="n">ef_ddq1_dalpha_dalpha_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">delta</span><span class="p">)</span>
+            <span class="n">J_12</span> <span class="o">+=</span> <span class="n">ef_ddq1_dalpha_dbeta_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">delta</span><span class="p">)</span>
+            <span class="n">J_22</span> <span class="o">+=</span> <span class="n">ef_ddq1_dbeta_dbeta_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">delta</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">recall</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">J_11</span> <span class="o">+=</span> <span class="n">ef_ddq0_dalpha_dalpha_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">delta</span><span class="p">)</span>
+            <span class="n">J_12</span> <span class="o">+=</span> <span class="n">ef_ddq0_dalpha_dbeta_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">delta</span><span class="p">)</span>
+            <span class="n">J_22</span> <span class="o">+=</span> <span class="n">ef_ddq0_dbeta_dbeta_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">delta</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;recall is not either 1 or 0, but is </span><span class="si">{</span><span class="n">recall</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">J</span> <span class="o">=</span> <span class="o">-</span><span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">J_11</span><span class="p">,</span> <span class="n">J_12</span><span class="p">],</span> <span class="p">[</span><span class="n">J_12</span><span class="p">,</span> <span class="n">J_22</span><span class="p">]])</span>
+    <span class="k">return</span> <span class="n">J</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">deltas</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">__ef_get_sequence_likelihood_with_transform</span><span class="p">(</span>
+    <span class="n">theta</span><span class="p">,</span>
+    <span class="n">deltas</span><span class="p">,</span>
+    <span class="n">recalls</span><span class="p">,</span>
+    <span class="n">k_vector</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="n">ll</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span> <span class="o">=</span> <span class="n">theta</span>
+
+    <span class="k">if</span> <span class="n">k_vector</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">nsched</span><span class="p">,</span> <span class="n">recall</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">recalls</span><span class="p">):</span>
+            <span class="n">dll</span> <span class="o">=</span> <span class="n">_ef_log_likelihood_sample</span><span class="p">(</span>
+                <span class="n">recall</span><span class="p">,</span> <span class="n">nsched</span><span class="p">,</span> <span class="n">deltas</span><span class="p">[</span><span class="n">nsched</span><span class="p">],</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">transform</span>
+            <span class="p">)</span>
+            <span class="n">ll</span> <span class="o">+=</span> <span class="n">dll</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">recall</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">k_vector</span><span class="p">,</span> <span class="n">recalls</span><span class="p">)):</span>
+            <span class="n">dll</span> <span class="o">=</span> <span class="n">_ef_log_likelihood_sample</span><span class="p">(</span>
+                <span class="n">recall</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">deltas</span><span class="p">[</span><span class="n">n</span><span class="p">],</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">transform</span>
+            <span class="p">)</span>
+            <span class="n">ll</span> <span class="o">+=</span> <span class="n">dll</span>
+    <span class="k">return</span> <span class="n">ll</span>
+
+
+<span class="c1">#### ============================= Plot</span>
+
+
+<div class="viewcode-block" id="plot_exponent_scatter"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.plot_exponent_scatter.html#pyrbit.ef.plot_exponent_scatter">[docs]</a><span class="k">def</span> <span class="nf">plot_exponent_scatter</span><span class="p">(</span><span class="n">exponent</span><span class="p">,</span> <span class="n">recall</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xbins</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">inf_to_int</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">inf_to_int</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">exponent</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">exponent</span><span class="p">,</span> <span class="n">neginf</span><span class="o">=</span><span class="n">inf_to_int</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">_</span><span class="p">,</span> <span class="n">_regplot</span> <span class="o">=</span> <span class="n">regplot</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">exponent</span><span class="p">,</span>
+        <span class="n">y</span><span class="o">=</span><span class="n">recall</span><span class="p">,</span>
+        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+        <span class="n">fit_reg</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">x_bins</span><span class="o">=</span><span class="n">xbins</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Estimated recall probability&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">regplot</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">exponent</span><span class="p">,</span>
+        <span class="n">y</span><span class="o">=</span><span class="n">recall</span><span class="p">,</span>
+        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+        <span class="n">fit_reg</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Recall events&quot;</span><span class="p">,</span>
+        <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="s2">&quot;orange&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">_x</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">exponent</span><span class="p">),</span> <span class="n">numpy</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">exponent</span><span class="p">),</span> <span class="mi">100</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">_x</span><span class="p">,</span> <span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">_x</span><span class="p">],</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;exponential forgetting model&quot;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;$\mathrm{exponent~}\omega$&quot;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Recall (events and probabilities)&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ax</span><span class="p">,</span> <span class="n">_regplot</span></div>
+
+
+<div class="viewcode-block" id="loglogpplot"><a class="viewcode-back" href="../../_autosummary/pyrbit.ef.loglogpplot.html#pyrbit.ef.loglogpplot">[docs]</a><span class="k">def</span> <span class="nf">loglogpplot</span><span class="p">(</span><span class="n">k_repetition</span><span class="p">,</span> <span class="n">recall</span><span class="p">,</span> <span class="n">deltas</span><span class="p">,</span> <span class="n">x_bins</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;log&quot;</span><span class="p">):</span>
+    <span class="n">sequence</span> <span class="o">=</span> <span class="p">[(</span><span class="n">k</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">k_repetition</span><span class="p">,</span> <span class="n">recall</span><span class="p">,</span> <span class="n">deltas</span><span class="p">)]</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">sequence</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;repetition&quot;</span><span class="p">,</span> <span class="s2">&quot;recall&quot;</span><span class="p">,</span> <span class="s2">&quot;deltat&quot;</span><span class="p">]</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;repetition&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;log&quot;</span><span class="p">:</span>
+        <span class="n">_x_bins</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span>
+            <span class="n">numpy</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;deltat&quot;</span><span class="p">])),</span>
+            <span class="n">numpy</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;deltat&quot;</span><span class="p">])),</span>
+            <span class="n">x_bins</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">_x_bins</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span>
+            <span class="n">numpy</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;deltat&quot;</span><span class="p">]),</span> <span class="n">numpy</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;deltat&quot;</span><span class="p">]),</span> <span class="n">x_bins</span>
+        <span class="p">)</span>
+
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;discretized_deltas&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">cut</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;deltat&quot;</span><span class="p">],</span> <span class="n">bins</span><span class="o">=</span><span class="n">_x_bins</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="n">df_group</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;repetition&quot;</span><span class="p">,</span> <span class="s2">&quot;discretized_deltas&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">df_group</span><span class="p">[</span><span class="s2">&quot;log_delta&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">df_group</span><span class="p">[</span><span class="s2">&quot;deltat&quot;</span><span class="p">])</span>
+    <span class="n">df_group</span> <span class="o">=</span> <span class="n">df_group</span><span class="p">[</span><span class="n">df_group</span><span class="p">[</span><span class="s2">&quot;recall&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="n">df_group</span><span class="p">[</span><span class="s2">&quot;minuslogp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">numpy</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">df_group</span><span class="p">[</span><span class="s2">&quot;recall&quot;</span><span class="p">])</span>
+    <span class="n">df_group</span> <span class="o">=</span> <span class="n">df_group</span><span class="p">[</span><span class="n">df_group</span><span class="p">[</span><span class="s2">&quot;minuslogp&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="n">df_group</span><span class="p">[</span><span class="s2">&quot;logminuslogp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">df_group</span><span class="p">[</span><span class="s2">&quot;minuslogp&quot;</span><span class="p">])</span>
+
+    <span class="n">df_group</span> <span class="o">=</span> <span class="n">df_group</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">smf</span><span class="o">.</span><span class="n">mixedlm</span><span class="p">(</span>
+            <span class="s2">&quot;logminuslogp ~ log_delta&quot;</span><span class="p">,</span> <span class="n">df_group</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="n">df_group</span><span class="p">[</span><span class="s2">&quot;repetition&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="n">_fit</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+        <span class="n">ri</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">_fit</span><span class="o">.</span><span class="n">random_effects</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+        <span class="n">beta_estim</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">ri</span><span class="p">)))</span>
+        <span class="n">alpha_estim</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">_fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;Intercept&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">ri</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">estim</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;alpha_estim&quot;</span><span class="p">:</span> <span class="n">alpha_estim</span><span class="p">,</span> <span class="s2">&quot;beta_estim&quot;</span><span class="p">:</span> <span class="n">beta_estim</span><span class="p">}</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">estim</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="n">fg</span> <span class="o">=</span> <span class="n">seaborn</span><span class="o">.</span><span class="n">lmplot</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="s2">&quot;log_delta&quot;</span><span class="p">,</span>
+        <span class="n">y</span><span class="o">=</span><span class="s2">&quot;logminuslogp&quot;</span><span class="p">,</span>
+        <span class="n">data</span><span class="o">=</span><span class="n">df_group</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(),</span>
+        <span class="n">hue</span><span class="o">=</span><span class="s2">&quot;repetition&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">ax</span> <span class="o">=</span> <span class="n">fg</span><span class="o">.</span><span class="n">axes</span><span class="o">.</span><span class="n">flatten</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">xlim</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">get_xlim</span><span class="p">()</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xlim</span><span class="p">,</span> <span class="n">xlim</span><span class="p">,</span> <span class="s2">&quot;r-&quot;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;y=x&quot;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">xlim</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.2</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">xlim</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.2</span><span class="p">,</span> <span class="s2">&quot;y=x&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">)</span>
+    <span class="n">fg</span><span class="o">.</span><span class="n">set_xlabels</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;$\log(\Delta_t)$&quot;</span><span class="p">)</span>
+    <span class="n">fg</span><span class="o">.</span><span class="n">set_ylabels</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;$\log(-\log p)$&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fg</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">estim</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="c1"># [startdoc]</span>
+    <span class="kn">from</span> <span class="nn">pyrbit.mle_utils</span> <span class="kn">import</span> <span class="n">CI_asymptotical</span><span class="p">,</span> <span class="n">confidence_ellipse</span>
+    <span class="kn">from</span> <span class="nn">pyrbit.ef</span> <span class="kn">import</span> <span class="p">(</span>
+        <span class="n">ExponentialForgetting</span><span class="p">,</span>
+        <span class="n">diagnostics</span><span class="p">,</span>
+        <span class="n">identify_ef_from_recall_sequence</span><span class="p">,</span>
+        <span class="n">ef_observed_information_matrix</span><span class="p">,</span>
+        <span class="n">covar_delta_method_log_alpha</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="kn">from</span> <span class="nn">pyrbit.mem_utils</span> <span class="kn">import</span> <span class="n">BlockBasedSchedule</span><span class="p">,</span> <span class="n">experiment</span>
+    <span class="kn">import</span> <span class="nn">numpy</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+    <span class="n">SEED</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="mi">10000</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.001</span>
+    <span class="n">beta</span> <span class="o">=</span> <span class="mf">0.4</span>
+
+    <span class="c1"># Initialize an EF memory model with 1 item</span>
+    <span class="n">ef</span> <span class="o">=</span> <span class="n">ExponentialForgetting</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">)</span>
+
+    <span class="c1"># Helper function for simulation</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">simulate_arbitrary_traj</span><span class="p">(</span><span class="n">ef</span><span class="p">,</span> <span class="n">k_vector</span><span class="p">,</span> <span class="n">deltas</span><span class="p">):</span>
+        <span class="n">recall</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">k_vector</span><span class="p">,</span> <span class="n">deltas</span><span class="p">):</span>
+            <span class="n">ef</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="n">k</span><span class="p">)</span>
+            <span class="n">recall</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ef</span><span class="o">.</span><span class="n">query_item</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">d</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">recall</span>
+
+    <span class="c1"># ============== Simulate some data</span>
+    <span class="n">k_vector</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">N</span><span class="p">)</span>
+    <span class="n">deltas</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">5000</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">N</span><span class="p">)</span>
+    <span class="n">recall_probs</span> <span class="o">=</span> <span class="n">simulate_arbitrary_traj</span><span class="p">(</span><span class="n">ef</span><span class="p">,</span> <span class="n">k_vector</span><span class="p">,</span> <span class="n">deltas</span><span class="p">)</span>
+    <span class="n">recall</span> <span class="o">=</span> <span class="p">[</span><span class="n">rp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">rp</span> <span class="ow">in</span> <span class="n">recall_probs</span><span class="p">]</span>
+    <span class="n">k_repetition</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">k_vector</span><span class="p">]</span>
+
+    <span class="c1"># ================ Run diagnostics</span>
+    <span class="c1"># some options that you can set to tweak the diagnostics output</span>
+    <span class="n">exponent_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">xbins</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">inf_to_int</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">loglogplot_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">x_bins</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;lin&quot;</span><span class="p">)</span>
+    <span class="c1"># Run the diagnostics</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">fg</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">estim</span><span class="p">)</span> <span class="o">=</span> <span class="n">diagnostics</span><span class="p">(</span>
+        <span class="n">alpha</span><span class="p">,</span>
+        <span class="n">beta</span><span class="p">,</span>
+        <span class="n">k_repetition</span><span class="p">,</span>
+        <span class="n">deltas</span><span class="p">,</span>
+        <span class="n">recall</span><span class="p">,</span>
+        <span class="n">exponent_kwargs</span><span class="o">=</span><span class="n">exponent_kwargs</span><span class="p">,</span>
+        <span class="n">loglogplot_kwargs</span><span class="o">=</span><span class="n">loglogplot_kwargs</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="c1"># ==================== Perform ML Estimation</span>
+    <span class="c1"># Solver parameters; this should work well and be quite fast</span>
+    <span class="n">optim_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;L-BFGS-B&quot;</span><span class="p">,</span> <span class="s2">&quot;bounds&quot;</span><span class="p">:</span> <span class="p">[(</span><span class="mf">1e-5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">)]}</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">guess</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1e-2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+    <span class="c1"># Pass all the observed data to the inference function. You can use basin_hopping for more precise estimates but this will take more time, see actr.py for an example. Returns the output of scipy.optimize</span>
+    <span class="n">inference_results</span> <span class="o">=</span> <span class="n">identify_ef_from_recall_sequence</span><span class="p">(</span>
+        <span class="n">recall_sequence</span><span class="o">=</span><span class="n">recall</span><span class="p">,</span>
+        <span class="n">deltas</span><span class="o">=</span><span class="n">deltas</span><span class="p">,</span>
+        <span class="n">k_vector</span><span class="o">=</span><span class="n">k_repetition</span><span class="p">,</span>
+        <span class="n">optim_kwargs</span><span class="o">=</span><span class="n">optim_kwargs</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+        <span class="n">guess</span><span class="o">=</span><span class="n">guess</span><span class="p">,</span>
+        <span class="n">basin_hopping</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">basin_hopping_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1">## ==== computing Confidence Intervals and Ellipses</span>
+
+    <span class="c1"># Get observed information matrix</span>
+    <span class="n">J</span> <span class="o">=</span> <span class="n">ef_observed_information_matrix</span><span class="p">(</span>
+        <span class="n">recall</span><span class="p">,</span> <span class="n">deltas</span><span class="p">,</span> <span class="o">*</span><span class="n">inference_results</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">k_vector</span><span class="o">=</span><span class="n">k_repetition</span>
+    <span class="p">)</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># Compute covariance matrix:</span>
+    <span class="n">covar</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">J</span><span class="p">)</span>
+    <span class="c1"># get 95% confidence intervals</span>
+    <span class="n">cis</span> <span class="o">=</span> <span class="n">CI_asymptotical</span><span class="p">(</span><span class="n">covar</span><span class="p">,</span> <span class="n">inference_results</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">critical_value</span><span class="o">=</span><span class="mf">1.96</span><span class="p">)</span>
+    <span class="n">ax_lin</span> <span class="o">=</span> <span class="n">confidence_ellipse</span><span class="p">(</span><span class="n">inference_results</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">covar</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="c1"># with log transform --- should be better</span>
+    <span class="n">transformed_covar</span> <span class="o">=</span> <span class="n">covar_delta_method_log_alpha</span><span class="p">(</span><span class="n">inference_results</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">covar</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">inference_results</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">inference_results</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+    <span class="n">cis</span> <span class="o">=</span> <span class="n">CI_asymptotical</span><span class="p">(</span><span class="n">transformed_covar</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">critical_value</span><span class="o">=</span><span class="mf">1.96</span><span class="p">)</span>
+    <span class="n">ax_log</span> <span class="o">=</span> <span class="n">confidence_ellipse</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">transformed_covar</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">ax_lin</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;CE with linear scale&quot;</span><span class="p">)</span>
+    <span class="n">ax_log</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;CE with alpha log scale&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="c1"># ========== An example of inference when using a BlockBasedSchedule</span>
+    <span class="c1"># Define a blockbasedschedule</span>
+    <span class="n">schedule</span> <span class="o">=</span> <span class="n">BlockBasedSchedule</span><span class="p">(</span>
+        <span class="mi">1</span><span class="p">,</span>
+        <span class="mi">5</span><span class="p">,</span>
+        <span class="p">[</span><span class="mi">200</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">2000</span><span class="p">,</span> <span class="mi">86400</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">2000</span><span class="p">],</span>
+        <span class="n">repet_trials</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">seed</span><span class="o">=</span><span class="mi">123</span><span class="p">,</span>
+        <span class="n">sigma_t</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="c1"># Alternative way of defining a population as a list</span>
+    <span class="n">population_model</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">ExponentialForgetting</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mf">2.5</span><span class="p">),</span> <span class="mf">0.75</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="n">experiment</span><span class="p">(</span>
+        <span class="n">population_model</span><span class="p">,</span>
+        <span class="n">schedule</span><span class="p">,</span>
+        <span class="n">test_blocks</span><span class="o">=</span><span class="p">[</span>
+            <span class="mi">1</span><span class="p">,</span>
+            <span class="mi">3</span><span class="p">,</span>
+            <span class="mi">5</span><span class="p">,</span>
+            <span class="mi">6</span><span class="p">,</span>
+            <span class="mi">8</span><span class="p">,</span>
+        <span class="p">],</span>  <span class="c1"># If there are learning vs recall blocks, define which are the test blocks. This changes behavior of the memory model (false recall during test does not count as an extra repetition in the models)</span>
+        <span class="n">replications</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># untested for != 1, but is not useful</span>
+    <span class="p">)</span>
+
+    <span class="c1"># make a big one D array out of the recall data, and get the corresponding deltas and ks</span>
+    <span class="n">r</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="n">flatten</span><span class="p">(</span>
+        <span class="n">data</span><span class="p">,</span>
+        <span class="n">schedule</span><span class="o">=</span><span class="n">schedule</span><span class="p">,</span>
+        <span class="n">population_model</span><span class="o">=</span><span class="n">population_model</span><span class="p">,</span>
+        <span class="n">test_blocks</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span>
+        <span class="n">get_k_delta</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">replications</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># infer model parameters</span>
+    <span class="n">optim_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;L-BFGS-B&quot;</span><span class="p">,</span> <span class="s2">&quot;bounds&quot;</span><span class="p">:</span> <span class="p">[(</span><span class="mf">1e-5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">)]}</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">guess</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1e-2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+    <span class="c1"># Pass all the observed data to the inference function. You can use basin_hopping for more precise estimates but this will take more time, see actr.py for an example. Returns the output of scipy.optimize</span>
+    <span class="n">inference_results</span> <span class="o">=</span> <span class="n">identify_ef_from_recall_sequence</span><span class="p">(</span>
+        <span class="n">recall_sequence</span><span class="o">=</span><span class="n">r</span><span class="p">,</span>
+        <span class="n">deltas</span><span class="o">=</span><span class="n">d</span><span class="p">,</span>
+        <span class="n">k_vector</span><span class="o">=</span><span class="n">k</span><span class="p">,</span>
+        <span class="n">optim_kwargs</span><span class="o">=</span><span class="n">optim_kwargs</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+        <span class="n">guess</span><span class="o">=</span><span class="n">guess</span><span class="p">,</span>
+        <span class="n">basin_hopping</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">basin_hopping_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">J</span> <span class="o">=</span> <span class="n">ef_observed_information_matrix</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="o">*</span><span class="n">inference_results</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">k_vector</span><span class="o">=</span><span class="n">k</span><span class="p">)</span>
+    <span class="n">covar</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">J</span><span class="p">)</span>
+    <span class="c1"># get 95% confidence intervals</span>
+    <span class="n">transformed_covar</span> <span class="o">=</span> <span class="n">covar_delta_method_log_alpha</span><span class="p">(</span><span class="n">inference_results</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">covar</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">inference_results</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">inference_results</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+    <span class="n">cis</span> <span class="o">=</span> <span class="n">CI_asymptotical</span><span class="p">(</span><span class="n">transformed_covar</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">critical_value</span><span class="o">=</span><span class="mf">1.96</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">cis</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Julien Gori.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

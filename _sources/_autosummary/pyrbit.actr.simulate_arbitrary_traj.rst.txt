@@ -1,0 +1,6 @@
+pyrbit.actr.simulate\_arbitrary\_traj
+=====================================
+
+.. currentmodule:: pyrbit.actr
+
+.. autofunction:: simulate_arbitrary_traj

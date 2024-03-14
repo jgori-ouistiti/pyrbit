@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pyrbit.plot_utils &mdash; PyRBIT 0.1.1 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            PyRBIT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">See also</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">    Home page</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ef.html">Exponential Forgetting Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../actr.html">ACT-R Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../memory.html">Memory Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../information.html">Evaluating the informativeness of a schedule</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../design.html">Comparing block recall percentages, power analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_autosummary/pyrbit.html">API reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">PyRBIT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pyrbit.plot_utils</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pyrbit.plot_utils</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">seaborn.regression</span> <span class="kn">import</span> <span class="n">_RegressionPlotter</span>
+<span class="kn">import</span> <span class="nn">matplotlib</span> <span class="k">as</span> <span class="nn">mpl</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+
+<span class="c1"># code patched from seaborn v0.12.2</span>
+<span class="k">class</span> <span class="nc">_PatchedRegressionPlotter</span><span class="p">(</span><span class="n">_RegressionPlotter</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">scatterplot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">kws</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Draw the data.&quot;&quot;&quot;</span>
+        <span class="c1"># Treat the line-based markers specially, explicitly setting larger</span>
+        <span class="c1"># linewidth than is provided by the seaborn style defaults.</span>
+        <span class="c1"># This would ideally be handled better in matplotlib (i.e., distinguish</span>
+        <span class="c1"># between edgewidth for solid glyphs and linewidth for line glyphs</span>
+        <span class="c1"># but this should do for now.</span>
+        <span class="n">line_markers</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;2&quot;</span><span class="p">,</span> <span class="s2">&quot;3&quot;</span><span class="p">,</span> <span class="s2">&quot;4&quot;</span><span class="p">,</span> <span class="s2">&quot;+&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;|&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_estimator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;marker&quot;</span> <span class="ow">in</span> <span class="n">kws</span> <span class="ow">and</span> <span class="n">kws</span><span class="p">[</span><span class="s2">&quot;marker&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">line_markers</span><span class="p">:</span>
+                <span class="n">lw</span> <span class="o">=</span> <span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s2">&quot;lines.linewidth&quot;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">lw</span> <span class="o">=</span> <span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s2">&quot;lines.markeredgewidth&quot;</span><span class="p">]</span>
+            <span class="n">kws</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;linewidths&quot;</span><span class="p">,</span> <span class="n">lw</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">kws</span><span class="p">[</span><span class="s2">&quot;color&quot;</span><span class="p">],</span> <span class="s2">&quot;shape&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">kws</span><span class="p">[</span><span class="s2">&quot;color&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+                <span class="n">kws</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;alpha&quot;</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">)</span>
+
+            <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scatter_data</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># TODO abstraction</span>
+            <span class="n">ci_kws</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="n">kws</span><span class="p">[</span><span class="s2">&quot;color&quot;</span><span class="p">]}</span>
+            <span class="k">if</span> <span class="s2">&quot;alpha&quot;</span> <span class="ow">in</span> <span class="n">kws</span><span class="p">:</span>
+                <span class="n">ci_kws</span><span class="p">[</span><span class="s2">&quot;alpha&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kws</span><span class="p">[</span><span class="s2">&quot;alpha&quot;</span><span class="p">]</span>
+            <span class="n">ci_kws</span><span class="p">[</span><span class="s2">&quot;linewidth&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s2">&quot;lines.linewidth&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1.75</span>
+            <span class="n">kws</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;s&quot;</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
+
+            <span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">cis</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">estimate_data</span>
+            <span class="k">if</span> <span class="p">[</span><span class="n">ci</span> <span class="k">for</span> <span class="n">ci</span> <span class="ow">in</span> <span class="n">cis</span> <span class="k">if</span> <span class="n">ci</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]:</span>
+                <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">ci</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">cis</span><span class="p">):</span>
+                    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">x</span><span class="p">],</span> <span class="n">ci</span><span class="p">,</span> <span class="o">**</span><span class="n">ci_kws</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">xs</span> <span class="o">=</span> <span class="n">xs</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ys</span> <span class="o">=</span> <span class="n">ys</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cis</span> <span class="o">=</span> <span class="n">cis</span>
+
+    <span class="k">def</span> <span class="nf">fit_statsmodels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grid</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;More general regression function using statsmodels objects.&quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">statsmodels.tools.sm_exceptions</span> <span class="k">as</span> <span class="nn">sme</span>
+        <span class="kn">import</span> <span class="nn">warnings</span>
+
+        <span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">c_</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)),</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span>
+        <span class="n">grid</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">c_</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">grid</span><span class="p">)),</span> <span class="n">grid</span><span class="p">]</span>
+
+        <span class="k">def</span> <span class="nf">reg_func</span><span class="p">(</span><span class="n">_x</span><span class="p">,</span> <span class="n">_y</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+            <span class="n">err_classes</span> <span class="o">=</span> <span class="p">(</span><span class="n">sme</span><span class="o">.</span><span class="n">PerfectSeparationError</span><span class="p">,)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">sme</span><span class="p">,</span> <span class="s2">&quot;PerfectSeparationWarning&quot;</span><span class="p">):</span>
+                        <span class="c1"># statsmodels&gt;=0.14.0</span>
+                        <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="n">sme</span><span class="o">.</span><span class="n">PerfectSeparationWarning</span><span class="p">)</span>
+                        <span class="n">err_classes</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="n">err_classes</span><span class="p">,</span> <span class="n">sme</span><span class="o">.</span><span class="n">PerfectSeparationWarning</span><span class="p">)</span>
+                    <span class="n">_model</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">_y</span><span class="p">,</span> <span class="n">_x</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">store</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">reg_params</span> <span class="o">=</span> <span class="n">_model</span><span class="o">.</span><span class="n">params</span>
+                    <span class="n">yhat</span> <span class="o">=</span> <span class="n">_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">err_classes</span><span class="p">:</span>
+                <span class="n">yhat</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">grid</span><span class="p">))</span>
+                <span class="n">yhat</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">yhat</span>
+
+        <span class="n">yhat</span> <span class="o">=</span> <span class="n">reg_func</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ci</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">yhat</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="kn">from</span> <span class="nn">seaborn</span> <span class="kn">import</span> <span class="n">algorithms</span> <span class="k">as</span> <span class="n">algo</span>
+
+        <span class="n">yhat_boots</span> <span class="o">=</span> <span class="n">algo</span><span class="o">.</span><span class="n">bootstrap</span><span class="p">(</span>
+            <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">func</span><span class="o">=</span><span class="n">reg_func</span><span class="p">,</span> <span class="n">n_boot</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_boot</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">units</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">yhat</span><span class="p">,</span> <span class="n">yhat_boots</span>
+
+
+<div class="viewcode-block" id="regplot"><a class="viewcode-back" href="../../_autosummary/pyrbit.plot_utils.regplot.html#pyrbit.plot_utils.regplot">[docs]</a><span class="k">def</span> <span class="nf">regplot</span><span class="p">(</span>
+    <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">x</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">x_estimator</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">x_bins</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">x_ci</span><span class="o">=</span><span class="s2">&quot;ci&quot;</span><span class="p">,</span>
+    <span class="n">scatter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">fit_reg</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">ci</span><span class="o">=</span><span class="mi">95</span><span class="p">,</span>
+    <span class="n">n_boot</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+    <span class="n">units</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">logistic</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">lowess</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">robust</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">logx</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">x_partial</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">y_partial</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">truncate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">dropna</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">x_jitter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">y_jitter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">color</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;o&quot;</span><span class="p">,</span>
+    <span class="n">scatter_kws</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">line_kws</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    # regplot.xs, regplot.ys, regplot.cis --&gt; summary data</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">plotter</span> <span class="o">=</span> <span class="n">_PatchedRegressionPlotter</span><span class="p">(</span>
+        <span class="n">x</span><span class="p">,</span>
+        <span class="n">y</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">,</span>
+        <span class="n">x_estimator</span><span class="p">,</span>
+        <span class="n">x_bins</span><span class="p">,</span>
+        <span class="n">x_ci</span><span class="p">,</span>
+        <span class="n">scatter</span><span class="p">,</span>
+        <span class="n">fit_reg</span><span class="p">,</span>
+        <span class="n">ci</span><span class="p">,</span>
+        <span class="n">n_boot</span><span class="p">,</span>
+        <span class="n">units</span><span class="p">,</span>
+        <span class="n">seed</span><span class="p">,</span>
+        <span class="n">order</span><span class="p">,</span>
+        <span class="n">logistic</span><span class="p">,</span>
+        <span class="n">lowess</span><span class="p">,</span>
+        <span class="n">robust</span><span class="p">,</span>
+        <span class="n">logx</span><span class="p">,</span>
+        <span class="n">x_partial</span><span class="p">,</span>
+        <span class="n">y_partial</span><span class="p">,</span>
+        <span class="n">truncate</span><span class="p">,</span>
+        <span class="n">dropna</span><span class="p">,</span>
+        <span class="n">x_jitter</span><span class="p">,</span>
+        <span class="n">y_jitter</span><span class="p">,</span>
+        <span class="n">color</span><span class="p">,</span>
+        <span class="n">label</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+
+    <span class="n">scatter_kws</span> <span class="o">=</span> <span class="p">{}</span> <span class="k">if</span> <span class="n">scatter_kws</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">scatter_kws</span><span class="p">)</span>
+    <span class="n">scatter_kws</span><span class="p">[</span><span class="s2">&quot;marker&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">marker</span>
+    <span class="n">line_kws</span> <span class="o">=</span> <span class="p">{}</span> <span class="k">if</span> <span class="n">line_kws</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">line_kws</span><span class="p">)</span>
+    <span class="n">plotter</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">scatter_kws</span><span class="p">,</span> <span class="n">line_kws</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ax</span><span class="p">,</span> <span class="n">plotter</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Julien Gori.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

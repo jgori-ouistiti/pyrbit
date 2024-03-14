@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pyrbit.design &mdash; PyRBIT 0.1.1 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            PyRBIT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">See also</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">    Home page</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ef.html">Exponential Forgetting Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../actr.html">ACT-R Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../memory.html">Memory Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../information.html">Evaluating the informativeness of a schedule</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../design.html">Comparing block recall percentages, power analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_autosummary/pyrbit.html">API reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">PyRBIT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pyrbit.design</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pyrbit.design</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">pyrbit.mem_utils</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">experiment</span><span class="p">,</span>
+    <span class="n">GaussianPopulation</span><span class="p">,</span>
+    <span class="n">BlockBasedSchedule</span><span class="p">,</span>
+    <span class="n">reshape_experiment</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">pyrbit.ef</span> <span class="kn">import</span> <span class="n">ExponentialForgetting</span>
+
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">pandas</span>
+<span class="kn">import</span> <span class="nn">scipy</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+
+
+<div class="viewcode-block" id="run_comparative_experiment"><a class="viewcode-back" href="../../_autosummary/pyrbit.design.run_comparative_experiment.html#pyrbit.design.run_comparative_experiment">[docs]</a><span class="k">def</span> <span class="nf">run_comparative_experiment</span><span class="p">(</span>
+    <span class="n">population_model_one</span><span class="p">,</span>
+    <span class="n">population_model_two</span><span class="p">,</span>
+    <span class="n">schedule</span><span class="p">,</span>
+    <span class="n">test_blocks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">replications</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="n">memory_models_A</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">population_model_one</span><span class="p">]</span>
+    <span class="n">memory_models_B</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">population_model_two</span><span class="p">]</span>
+
+    <span class="n">data_A</span> <span class="o">=</span> <span class="n">experiment</span><span class="p">(</span>
+        <span class="n">memory_models_A</span><span class="p">,</span> <span class="n">schedule</span><span class="p">,</span> <span class="n">test_blocks</span><span class="o">=</span><span class="n">test_blocks</span><span class="p">,</span> <span class="n">replications</span><span class="o">=</span><span class="n">replications</span>
+    <span class="p">)</span>
+    <span class="n">data_B</span> <span class="o">=</span> <span class="n">experiment</span><span class="p">(</span>
+        <span class="n">memory_models_B</span><span class="p">,</span> <span class="n">schedule</span><span class="p">,</span> <span class="n">test_blocks</span><span class="o">=</span><span class="n">test_blocks</span><span class="p">,</span> <span class="n">replications</span><span class="o">=</span><span class="n">replications</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">data_A</span><span class="p">,</span> <span class="n">data_B</span></div>
+
+
+<div class="viewcode-block" id="diff_eval_block_percentages"><a class="viewcode-back" href="../../_autosummary/pyrbit.design.diff_eval_block_percentages.html#pyrbit.design.diff_eval_block_percentages">[docs]</a><span class="k">def</span> <span class="nf">diff_eval_block_percentages</span><span class="p">(</span>
+    <span class="n">population_model_one</span><span class="p">,</span>
+    <span class="n">population_model_two</span><span class="p">,</span>
+    <span class="n">schedule</span><span class="p">,</span>
+    <span class="n">test_blocks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">output_df</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="c1"># [run-comparative-experiment-start]</span>
+    <span class="n">data_A</span><span class="p">,</span> <span class="n">data_B</span> <span class="o">=</span> <span class="n">run_comparative_experiment</span><span class="p">(</span>
+        <span class="n">population_model_one</span><span class="p">,</span>
+        <span class="n">population_model_two</span><span class="p">,</span>
+        <span class="n">schedule</span><span class="p">,</span>
+        <span class="n">test_blocks</span><span class="o">=</span><span class="n">test_blocks</span><span class="p">,</span>
+        <span class="n">replications</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="c1"># [run-comparative-experiment-after]</span>
+    <span class="k">if</span> <span class="n">test_blocks</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">nblocks</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">schedule</span><span class="o">.</span><span class="n">blocks</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">nblocks</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_blocks</span><span class="p">)</span>
+
+    <span class="n">recall_events_A</span> <span class="o">=</span> <span class="n">reshape_experiment</span><span class="p">(</span>
+        <span class="n">data_A</span><span class="p">,</span> <span class="n">schedule</span><span class="o">.</span><span class="n">nitems</span><span class="p">,</span> <span class="n">schedule</span><span class="o">.</span><span class="n">repet_trials</span><span class="p">,</span> <span class="n">nblocks</span>
+    <span class="p">)[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">recall_events_B</span> <span class="o">=</span> <span class="n">reshape_experiment</span><span class="p">(</span>
+        <span class="n">data_B</span><span class="p">,</span> <span class="n">schedule</span><span class="o">.</span><span class="n">nitems</span><span class="p">,</span> <span class="n">schedule</span><span class="o">.</span><span class="n">repet_trials</span><span class="p">,</span> <span class="n">nblocks</span>
+    <span class="p">)[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">mean_recall_A</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">recall_events_A</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">mean_recall_B</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">recall_events_B</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">output_df</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">mean_recall_A</span><span class="p">,</span> <span class="n">mean_recall_B</span>
+
+    <span class="n">iter_mean_recall_A</span> <span class="o">=</span> <span class="n">mean_recall_A</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">iter_mean_recall_B</span> <span class="o">=</span> <span class="n">mean_recall_B</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">block1</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nblocks</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">population_model_one</span><span class="p">]</span>
+    <span class="p">)</span>
+    <span class="n">block2</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nblocks</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">population_model_two</span><span class="p">]</span>
+    <span class="p">)</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;block recall %&quot;</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">iter_mean_recall_A</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">iter_mean_recall_B</span><span class="o">.</span><span class="n">ravel</span><span class="p">()),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;block&quot;</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">block1</span><span class="p">,</span> <span class="n">block2</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;Condition&quot;</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+                <span class="p">(</span>
+                    <span class="n">numpy</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">block1</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="s2">&quot;A&quot;</span><span class="p">),</span>
+                    <span class="n">numpy</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">block1</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="s2">&quot;B&quot;</span><span class="p">),</span>
+                <span class="p">),</span>
+                <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df</span><span class="p">,</span> <span class="n">mean_recall_A</span><span class="p">,</span> <span class="n">mean_recall_B</span></div>
+
+
+<div class="viewcode-block" id="get_p_value_diff"><a class="viewcode-back" href="../../_autosummary/pyrbit.design.get_p_value_diff.html#pyrbit.design.get_p_value_diff">[docs]</a><span class="k">def</span> <span class="nf">get_p_value_diff</span><span class="p">(</span>
+    <span class="n">population_model_one</span><span class="p">,</span>
+    <span class="n">population_model_two</span><span class="p">,</span>
+    <span class="n">schedule</span><span class="p">,</span>
+    <span class="n">combine_pvalues</span><span class="o">=</span><span class="s2">&quot;fisher&quot;</span><span class="p">,</span>
+    <span class="n">test_blocks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span>
+<span class="p">):</span>
+    <span class="n">df</span><span class="p">,</span> <span class="n">mr_A</span><span class="p">,</span> <span class="n">mr_B</span> <span class="o">=</span> <span class="n">diff_eval_block_percentages</span><span class="p">(</span>
+        <span class="n">population_model_one</span><span class="p">,</span>
+        <span class="n">population_model_two</span><span class="p">,</span>
+        <span class="n">schedule</span><span class="p">,</span>
+        <span class="n">test_blocks</span><span class="o">=</span><span class="n">test_blocks</span><span class="p">,</span>
+        <span class="n">output_df</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># import seaborn</span>
+    <span class="c1"># import matplotlib.pyplot as plt</span>
+
+    <span class="c1"># fix, ax = plt.subplots(nrows=1, ncols=1)</span>
+    <span class="c1"># seaborn.barplot(</span>
+    <span class="c1">#     data=df,</span>
+    <span class="c1">#     x=&quot;block&quot;,</span>
+    <span class="c1">#     y=&quot;block recall %&quot;,</span>
+    <span class="c1">#     hue=&quot;Condition&quot;,</span>
+    <span class="c1">#     errorbar=&quot;se&quot;,</span>
+    <span class="c1">#     ax=ax,</span>
+    <span class="c1"># )</span>
+    <span class="c1"># plt.show()</span>
+
+    <span class="n">p</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+        <span class="nb">len</span><span class="p">(</span><span class="n">combine_pvalues</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">combine_pvalue</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">combine_pvalues</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">combine_pvalue</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;fisher&quot;</span><span class="p">,</span> <span class="s2">&quot;stouffer&quot;</span><span class="p">]:</span>
+            <span class="c1"># pvalues = scipy.stats.ttest_rel(mr_A[0, :], mr_B[0, :], axis=0).pvalue[1:]</span>
+            <span class="n">pvalues</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">ttest_rel</span><span class="p">(</span><span class="n">mr_A</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">mr_B</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">pvalue</span><span class="p">[</span>
+                <span class="mi">1</span><span class="p">:</span>
+            <span class="p">]</span>
+            <span class="n">p</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">combine_pvalues</span><span class="p">(</span><span class="n">pvalues</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">combine_pvalue</span><span class="p">)</span><span class="o">.</span><span class="n">pvalue</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">p</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="n">combine_pvalue</span><span class="p">(</span><span class="n">mr_A</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">mr_B</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">p</span></div>
+
+
+<div class="viewcode-block" id="get_p_values_frequency"><a class="viewcode-back" href="../../_autosummary/pyrbit.design.get_p_values_frequency.html#pyrbit.design.get_p_values_frequency">[docs]</a><span class="k">def</span> <span class="nf">get_p_values_frequency</span><span class="p">(</span>
+    <span class="n">populations_one</span><span class="p">,</span>
+    <span class="n">populations_two</span><span class="p">,</span>
+    <span class="n">schedule</span><span class="p">,</span>
+    <span class="n">combine_pvalues</span><span class="o">=</span><span class="s2">&quot;fisher&quot;</span><span class="p">,</span>
+    <span class="n">test_blocks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">significance_level</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">combine_pvalues</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
+        <span class="n">combine_pvalues</span> <span class="o">=</span> <span class="p">[</span><span class="n">combine_pvalues</span><span class="p">]</span>
+
+    <span class="n">p_value_container</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">populations_one</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">combine_pvalues</span><span class="p">)))</span>
+    <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="p">(</span><span class="n">population_model_one</span><span class="p">,</span> <span class="n">population_model_two</span><span class="p">)</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span>
+        <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">populations_one</span><span class="p">,</span> <span class="n">populations_two</span><span class="p">))</span>
+    <span class="p">):</span>
+        <span class="n">p_value_container</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">get_p_value_diff</span><span class="p">(</span>
+            <span class="n">population_model_one</span><span class="p">,</span>
+            <span class="n">population_model_two</span><span class="p">,</span>
+            <span class="n">schedule</span><span class="p">,</span>
+            <span class="n">combine_pvalues</span><span class="o">=</span><span class="n">combine_pvalues</span><span class="p">,</span>
+            <span class="n">test_blocks</span><span class="o">=</span><span class="n">test_blocks</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="n">positives</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">p_value_container</span> <span class="o">&lt;</span> <span class="n">significance_level</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">positive_rate</span> <span class="o">=</span> <span class="n">positives</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">p_value_container</span><span class="p">)</span>
+    <span class="n">negative_rate</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">positive_rate</span>
+    <span class="k">return</span> <span class="n">positive_rate</span><span class="p">,</span> <span class="n">negative_rate</span><span class="p">,</span> <span class="n">p_value_container</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">pyrbit.mem_utils</span> <span class="kn">import</span> <span class="p">(</span>
+        <span class="n">BlockBasedSchedule</span><span class="p">,</span>
+        <span class="n">experiment</span><span class="p">,</span>
+        <span class="n">GaussianPopulation</span><span class="p">,</span>
+        <span class="n">Schedule</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="kn">from</span> <span class="nn">pyrbit.ef</span> <span class="kn">import</span> <span class="p">(</span>
+        <span class="n">get_k_delta_schedule</span><span class="p">,</span>
+        <span class="n">ExponentialForgetting</span><span class="p">,</span>
+        <span class="n">diagnostics</span><span class="p">,</span>
+        <span class="n">identify_ef_from_recall_sequence</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">schedule</span> <span class="o">=</span> <span class="n">BlockBasedSchedule</span><span class="p">(</span>
+        <span class="mi">1</span><span class="p">,</span>
+        <span class="mi">0</span><span class="p">,</span>
+        <span class="p">[</span><span class="mi">200</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">2000</span><span class="p">,</span> <span class="mi">86400</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">2000</span><span class="p">],</span>
+        <span class="n">repet_trials</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">seed</span><span class="o">=</span><span class="mi">123</span><span class="p">,</span>
+        <span class="n">sigma_t</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">population_model</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">ExponentialForgetting</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mf">2.5</span><span class="p">),</span> <span class="mf">0.75</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="n">experiment</span><span class="p">(</span>
+        <span class="n">population_model</span><span class="p">,</span>
+        <span class="n">schedule</span><span class="p">,</span>
+        <span class="n">test_blocks</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span>
+        <span class="n">replications</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># [diff-block-percentage]</span>
+
+    <span class="c1"># example with two equivalent population groups and RBITs</span>
+    <span class="n">population_model_one</span> <span class="o">=</span> <span class="n">GaussianPopulation</span><span class="p">(</span>
+        <span class="n">ExponentialForgetting</span><span class="p">,</span>
+        <span class="n">mu</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mf">2.5</span><span class="p">),</span> <span class="mf">0.75</span><span class="p">],</span>
+        <span class="n">sigma</span><span class="o">=</span><span class="mf">1e-7</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]),</span>
+        <span class="n">population_size</span><span class="o">=</span><span class="mi">24</span> <span class="o">*</span> <span class="mi">16</span><span class="p">,</span>
+        <span class="n">n_items</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">population_model_two</span> <span class="o">=</span> <span class="n">GaussianPopulation</span><span class="p">(</span>
+        <span class="n">ExponentialForgetting</span><span class="p">,</span>
+        <span class="n">mu</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mf">2.5</span><span class="p">),</span> <span class="mf">0.75</span><span class="p">],</span>
+        <span class="n">sigma</span><span class="o">=</span><span class="mf">1e-7</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]),</span>
+        <span class="n">population_size</span><span class="o">=</span><span class="mi">24</span> <span class="o">*</span> <span class="mi">16</span><span class="p">,</span>
+        <span class="n">n_items</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># L1   R1   L2   R2    L3    R3    R4   L4    R5</span>
+    <span class="c1">#   200  1000  200   200  2000 86400 200  2000</span>
+    <span class="n">schedule</span> <span class="o">=</span> <span class="n">BlockBasedSchedule</span><span class="p">(</span>
+        <span class="mi">1</span><span class="p">,</span>
+        <span class="mi">15</span><span class="p">,</span>
+        <span class="p">[</span><span class="mi">200</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">2000</span><span class="p">,</span> <span class="mi">86400</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">2000</span><span class="p">],</span>
+        <span class="n">repet_trials</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">seed</span><span class="o">=</span><span class="mi">123</span><span class="p">,</span>
+        <span class="n">sigma_t</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># get mean recall rates, as two arrays and optionnally as a large dataframe</span>
+    <span class="n">df</span><span class="p">,</span> <span class="n">mA</span><span class="p">,</span> <span class="n">mB</span> <span class="o">=</span> <span class="n">diff_eval_block_percentages</span><span class="p">(</span>
+        <span class="n">population_model_one</span><span class="p">,</span>
+        <span class="n">population_model_two</span><span class="p">,</span>
+        <span class="n">schedule</span><span class="p">,</span>
+        <span class="n">test_blocks</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span>
+        <span class="n">output_df</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># plot the evaluation</span>
+    <span class="kn">import</span> <span class="nn">seaborn</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+    <span class="n">fix</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">seaborn</span><span class="o">.</span><span class="n">barplot</span><span class="p">(</span>
+        <span class="n">data</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+        <span class="n">x</span><span class="o">=</span><span class="s2">&quot;block&quot;</span><span class="p">,</span>
+        <span class="n">y</span><span class="o">=</span><span class="s2">&quot;block recall %&quot;</span><span class="p">,</span>
+        <span class="n">hue</span><span class="o">=</span><span class="s2">&quot;Condition&quot;</span><span class="p">,</span>
+        <span class="n">errorbar</span><span class="o">=</span><span class="s2">&quot;se&quot;</span><span class="p">,</span>
+        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="c1"># [power analysis]</span>
+    <span class="c1"># Empirical Statistical power analysis</span>
+    <span class="n">REPETITIONS</span> <span class="o">=</span> <span class="mi">100</span>
+
+    <span class="c1"># Case 1: Equal RBITs, should find statistical significance alpha=0.05 at 5%</span>
+    <span class="n">population_model_one</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">GaussianPopulation</span><span class="p">(</span>
+            <span class="n">ExponentialForgetting</span><span class="p">,</span>
+            <span class="n">mu</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">),</span> <span class="mf">0.75</span><span class="p">],</span>
+            <span class="n">sigma</span><span class="o">=</span><span class="mf">1e-7</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]),</span>
+            <span class="n">population_size</span><span class="o">=</span><span class="mi">24</span><span class="p">,</span>
+            <span class="n">n_items</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">REPETITIONS</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="n">population_model_two</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">GaussianPopulation</span><span class="p">(</span>
+            <span class="n">ExponentialForgetting</span><span class="p">,</span>
+            <span class="n">mu</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">),</span> <span class="mf">0.75</span><span class="p">],</span>
+            <span class="n">sigma</span><span class="o">=</span><span class="mf">1e-7</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]),</span>
+            <span class="n">population_size</span><span class="o">=</span><span class="mi">24</span><span class="p">,</span>
+            <span class="n">n_items</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">REPETITIONS</span><span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="c1"># Define here custom methods to compute p values from mean recalls</span>
+    <span class="c1"># compute the average of p values</span>
+    <span class="k">def</span> <span class="nf">mean_pvalue</span><span class="p">(</span><span class="n">mr_A</span><span class="p">,</span> <span class="n">mr_B</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">pvalues</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">ttest_rel</span><span class="p">(</span><span class="n">mr_A</span><span class="p">,</span> <span class="n">mr_B</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">pvalue</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">pvalues</span><span class="p">)</span>
+
+    <span class="c1"># Bonferonni-like correction</span>
+    <span class="k">def</span> <span class="nf">bonf</span><span class="p">(</span><span class="n">mr_A</span><span class="p">,</span> <span class="n">mr_B</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">pvalues</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">ttest_rel</span><span class="p">(</span><span class="n">mr_A</span><span class="p">,</span> <span class="n">mr_B</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">pvalue</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">pvalues</span><span class="p">)</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">pvalues</span><span class="p">)</span>
+
+    <span class="c1"># Fisher and Stouffer methods can be called by their names to trigger their scipy implementation</span>
+    <span class="n">pos_one</span><span class="p">,</span> <span class="n">neg_one</span><span class="p">,</span> <span class="n">p_container</span> <span class="o">=</span> <span class="n">get_p_values_frequency</span><span class="p">(</span>
+        <span class="n">population_model_one</span><span class="p">,</span>
+        <span class="n">population_model_two</span><span class="p">,</span>
+        <span class="n">schedule</span><span class="p">,</span>
+        <span class="n">combine_pvalues</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;stouffer&quot;</span><span class="p">,</span> <span class="s2">&quot;fisher&quot;</span><span class="p">,</span> <span class="n">bonf</span><span class="p">,</span> <span class="n">mean_pvalue</span><span class="p">],</span>
+        <span class="n">test_blocks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">significance_level</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="c1"># Type 1 errors: we reject the null that there is no difference in RBITs but there was actually none</span>
+    <span class="n">type1error</span> <span class="o">=</span> <span class="n">pos_one</span>
+
+    <span class="c1"># Case 2: Unequal RBITs (alpha = 10**-2.1 versus alpha = 10**-2). The rate at which the test finds significant differences is an estimate of its power</span>
+    <span class="n">population_model_one</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">GaussianPopulation</span><span class="p">(</span>
+            <span class="n">ExponentialForgetting</span><span class="p">,</span>
+            <span class="n">mu</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mf">2.3</span><span class="p">),</span> <span class="mf">0.75</span><span class="p">],</span>
+            <span class="n">sigma</span><span class="o">=</span><span class="mf">1e-5</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]),</span>
+            <span class="n">population_size</span><span class="o">=</span><span class="mi">24</span><span class="p">,</span>
+            <span class="n">n_items</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">REPETITIONS</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="n">population_model_two</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">GaussianPopulation</span><span class="p">(</span>
+            <span class="n">ExponentialForgetting</span><span class="p">,</span>
+            <span class="n">mu</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">),</span> <span class="mf">0.75</span><span class="p">],</span>
+            <span class="n">sigma</span><span class="o">=</span><span class="mf">1e-5</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]),</span>
+            <span class="n">population_size</span><span class="o">=</span><span class="mi">24</span><span class="p">,</span>
+            <span class="n">n_items</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">REPETITIONS</span><span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="n">pos_two</span><span class="p">,</span> <span class="n">neg_two</span><span class="p">,</span> <span class="n">p_container</span> <span class="o">=</span> <span class="n">get_p_values_frequency</span><span class="p">(</span>
+        <span class="n">population_model_one</span><span class="p">,</span>
+        <span class="n">population_model_two</span><span class="p">,</span>
+        <span class="n">schedule</span><span class="p">,</span>
+        <span class="n">combine_pvalues</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;stouffer&quot;</span><span class="p">,</span> <span class="s2">&quot;fisher&quot;</span><span class="p">,</span> <span class="n">bonf</span><span class="p">,</span> <span class="n">mean_pvalue</span><span class="p">],</span>
+        <span class="n">test_blocks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">significance_level</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Type 2 errors: we failed to reject the null hypothesis that there is no difference between RBITs (even though it was False)</span>
+    <span class="n">type2error</span> <span class="o">=</span> <span class="n">neg_two</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Julien Gori.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,6 @@
+pyrbit.abc.ef\_simulator
+========================
+
+.. currentmodule:: pyrbit.abc
+
+.. autofunction:: ef_simulator

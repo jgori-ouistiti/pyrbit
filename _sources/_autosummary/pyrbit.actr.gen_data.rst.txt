@@ -1,0 +1,6 @@
+pyrbit.actr.gen\_data
+=====================
+
+.. currentmodule:: pyrbit.actr
+
+.. autofunction:: gen_data

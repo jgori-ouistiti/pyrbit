@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Memory Utilities &mdash; PyRBIT 0.1.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Evaluating the informativeness of a schedule" href="information.html" />
+    <link rel="prev" title="ACT-R" href="actr.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            PyRBIT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">See also</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">    Home page</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ef.html">Exponential Forgetting Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="actr.html">ACT-R Model</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Memory Utilities</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#the-memorymodel-class">The MemoryModel class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#schedules">Schedules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#trials">Trials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#populations">Populations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#experiments">Experiments</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="information.html">Evaluating the informativeness of a schedule</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design.html">Comparing block recall percentages, power analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="_autosummary/pyrbit.html">API reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">PyRBIT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Memory Utilities</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/memory.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="memory-utilities">
+<h1>Memory Utilities<a class="headerlink" href="#memory-utilities" title="Permalink to this heading"></a></h1>
+<p>PyRBIT defines several utilities that deal with memory models and experiments, of which we present here</p>
+<section id="the-memorymodel-class">
+<h2>The MemoryModel class<a class="headerlink" href="#the-memorymodel-class" title="Permalink to this heading"></a></h2>
+<p>All memory models in PyRBIT inherit from the MemoryModel class, and have to redefine the <code class="docutils literal notranslate"><span class="pre">update</span></code> method (how is the state of the memory model update when <code class="docutils literal notranslate"><span class="pre">item</span></code> is shown at <code class="docutils literal notranslate"><span class="pre">time</span></code>) and the <code class="docutils literal notranslate"><span class="pre">compute_probabilities</span></code> method (computes the probability of recall for all items at <code class="docutils literal notranslate"><span class="pre">time</span></code>. If <code class="docutils literal notranslate"><span class="pre">time</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code>, should use the last time where any <code class="docutils literal notranslate"><span class="pre">item</span></code> was presented.)</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MemoryModel</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nitems</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nitems</span> <span class="o">=</span> <span class="n">nitems</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rng</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">time</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">compute_probabilities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="k">def</span> <span class="nf">query_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">time</span><span class="p">):</span>
+        <span class="n">prob</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_probabilities</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">time</span><span class="p">)[</span><span class="n">item</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rng</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">prob</span><span class="p">,</span> <span class="n">prob</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="schedules">
+<h2>Schedules<a class="headerlink" href="#schedules" title="Permalink to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pyrbit.mem_utils</span> <span class="kn">import</span> <span class="n">Schedule</span><span class="p">,</span> <span class="n">BlockBasedSchedule</span>
+
+<span class="n">items</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="n">times</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">126</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">252</span><span class="p">,</span> <span class="mi">500</span><span class="p">,</span> <span class="mi">4844</span><span class="p">,</span> <span class="mi">5877</span><span class="p">]</span>
+
+<span class="c1"># Building a schedule</span>
+<span class="n">schedule</span> <span class="o">=</span> <span class="n">Schedule</span><span class="p">(</span><span class="n">items</span><span class="p">,</span> <span class="n">times</span><span class="p">)</span>
+<span class="c1"># You can iterate over a schedule</span>
+<span class="k">for</span> <span class="n">item</span><span class="p">,</span> <span class="n">time</span> <span class="ow">in</span> <span class="n">schedule</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span>
+
+<span class="c1"># [block-schedule]</span>
+<span class="c1"># You can create a block based schedule, where you specify a constant intertrial time (which includes execution time), interblock times (this also implicitly specifies the number of blocks), and whether items are repeated. You can also add some randomness by adding a random time for each item, drawn from a lognormal distribution with scale sigma_t.</span>
+<span class="n">schedule</span> <span class="o">=</span> <span class="n">BlockBasedSchedule</span><span class="p">(</span>
+    <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="n">repet_trials</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">123</span><span class="p">,</span> <span class="n">sigma_t</span><span class="o">=</span><span class="mi">1</span>
+<span class="p">)</span>
+<span class="c1"># you can print the schedule, which also shows block identifiers</span>
+<span class="n">schedule</span><span class="o">.</span><span class="n">print_schedule</span><span class="p">()</span>
+
+</pre></div>
+</div>
+</section>
+<section id="trials">
+<h2>Trials<a class="headerlink" href="#trials" title="Permalink to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># You can apply a schedule to a memory model and gather queries using run_trials</span>
+<span class="kn">from</span> <span class="nn">pyrbit.ef</span> <span class="kn">import</span> <span class="n">ExponentialForgetting</span>
+<span class="kn">from</span> <span class="nn">pyrbit.mem_utils</span> <span class="kn">import</span> <span class="n">run_trials</span>
+
+<span class="n">ef</span> <span class="o">=</span> <span class="n">ExponentialForgetting</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">123</span><span class="p">)</span>
+<span class="n">queries</span><span class="p">,</span> <span class="n">ef</span> <span class="o">=</span> <span class="n">run_trials</span><span class="p">(</span><span class="n">ef</span><span class="p">,</span> <span class="n">schedule</span><span class="p">,</span> <span class="n">reset</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">queries</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">ef</span><span class="o">.</span><span class="n">counters</span><span class="p">)</span>
+
+<span class="c1"># If you have learning blocks distinct from test blocks, you can use the test_blocks argument. This assumes that in a learning block the memory model is always updated, but not queried, while in a testing block, the memory model is always queried, and updated when that query is correct.</span>
+<span class="n">queries</span><span class="p">,</span> <span class="n">ef</span> <span class="o">=</span> <span class="n">run_trials</span><span class="p">(</span><span class="n">ef</span><span class="p">,</span> <span class="n">schedule</span><span class="p">,</span> <span class="n">test_blocks</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">reset</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">queries</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">ef</span><span class="o">.</span><span class="n">counters</span><span class="p">)</span>
+
+</pre></div>
+</div>
+</section>
+<section id="populations">
+<h2>Populations<a class="headerlink" href="#populations" title="Permalink to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># You can sample from a Gaussian population of memory models. Each memory model will have a different seed that spawns from the population&#39;s seed.</span>
+<span class="n">population_model</span> <span class="o">=</span> <span class="n">GaussianPopulation</span><span class="p">(</span>
+    <span class="n">ExponentialForgetting</span><span class="p">,</span>
+    <span class="n">mu</span><span class="o">=</span><span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">],</span>
+    <span class="n">sigma</span><span class="o">=</span><span class="mf">1e-3</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]),</span>
+    <span class="n">population_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="n">n_items</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">123</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="c1"># you can iterate over a population</span>
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">population_model</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+
+</pre></div>
+</div>
+</section>
+<section id="experiments">
+<h2>Experiments<a class="headerlink" href="#experiments" title="Permalink to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># You can perform an experiment, by having members of the population perform trials. The data has shape (replication, 2, schedule_length, population_size); The dimension 2 is for (recall, recall_probability). Note that you can use a list of memory models rather than population objects.</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">experiment</span><span class="p">(</span><span class="n">population_model</span><span class="p">,</span> <span class="n">schedule</span><span class="p">,</span> <span class="n">replications</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+
+<span class="n">population_model</span> <span class="o">=</span> <span class="n">GaussianPopulation</span><span class="p">(</span>
+    <span class="n">ExponentialForgetting</span><span class="p">,</span>
+    <span class="n">mu</span><span class="o">=</span><span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">],</span>
+    <span class="n">sigma</span><span class="o">=</span><span class="mf">1e-7</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]),</span>
+    <span class="n">population_size</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+    <span class="n">n_items</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">123</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">experiment</span><span class="p">(</span><span class="n">population_model</span><span class="p">,</span> <span class="n">schedule</span><span class="p">,</span> <span class="n">replications</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">data</span><span class="p">,</span> <span class="n">trials</span> <span class="o">=</span> <span class="n">experiment</span><span class="p">(</span>
+    <span class="n">population_model</span><span class="p">,</span>
+    <span class="n">schedule</span><span class="p">,</span>
+    <span class="n">replications</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">test_blocks</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+    <span class="n">get_trial_info</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="c1"># You can also reshape the experiment data to have shape (replication, 2, nblocks, repet_trials, nitems, population_size)</span>
+<span class="n">rdata</span> <span class="o">=</span> <span class="n">reshape_experiment</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="actr.html" class="btn btn-neutral float-left" title="ACT-R" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="information.html" class="btn btn-neutral float-right" title="Evaluating the informativeness of a schedule" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Julien Gori.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pyrbit.actr &mdash; PyRBIT 0.1.1 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            PyRBIT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">See also</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">    Home page</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ef.html">Exponential Forgetting Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../actr.html">ACT-R Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../memory.html">Memory Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../information.html">Evaluating the informativeness of a schedule</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../design.html">Comparing block recall percentages, power analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_autosummary/pyrbit.html">API reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">PyRBIT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pyrbit.actr</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pyrbit.actr</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">pyrbit.mem_utils</span> <span class="kn">import</span> <span class="n">MemoryModel</span>
+<span class="kn">from</span> <span class="nn">pyrbit.mle_utils</span> <span class="kn">import</span> <span class="n">mle_sequence</span>
+<span class="kn">from</span> <span class="nn">pyrbit.plot_utils</span> <span class="kn">import</span> <span class="n">regplot</span>
+<span class="kn">import</span> <span class="nn">seaborn</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+
+<div class="viewcode-block" id="ACTR"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.ACTR.html#pyrbit.actr.ACTR">[docs]</a><span class="k">class</span> <span class="nc">ACTR</span><span class="p">(</span><span class="n">MemoryModel</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nitems</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">buffer_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">nitems</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau</span> <span class="o">=</span> <span class="n">d</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">tau</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">buffer_size</span> <span class="o">=</span> <span class="n">buffer_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tau</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">d</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">d</span> <span class="o">=</span> <span class="n">d</span>
+        <span class="k">if</span> <span class="n">s</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">s</span> <span class="o">=</span> <span class="n">s</span>
+        <span class="k">if</span> <span class="n">tau</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tau</span> <span class="o">=</span> <span class="n">tau</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">counter_pres</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">nitems</span><span class="p">,))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counter_time</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">nitems</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">buffer_size</span><span class="p">),</span> <span class="n">numpy</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_print_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;d: </span><span class="se">\t</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">counter_pres</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;time: </span><span class="se">\t</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">counter_time</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_compute_item_activation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">time</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">time</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">counter_time</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activation</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
+            <span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">counter_time</span><span class="p">[</span><span class="n">item</span><span class="p">])</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">))</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">activation</span>
+
+    <span class="k">def</span> <span class="nf">_compute_item_probabilities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">activation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_item_activation</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="n">time</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">tau</span> <span class="o">-</span> <span class="n">activation</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">s</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">compute_probabilities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">cip</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">vectorize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_compute_item_probabilities</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cip</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nitems</span><span class="p">)),</span> <span class="n">time</span><span class="o">=</span><span class="n">time</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">time</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">time</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">counter_pres</span><span class="p">[</span><span class="n">item</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">counter_time</span><span class="p">[</span><span class="n">item</span><span class="p">,</span> <span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="n">time</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">counter_pres</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">counter_pres</span><span class="p">[</span><span class="n">item</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">counter_time</span><span class="p">[</span><span class="n">item</span><span class="p">,</span> <span class="n">n</span> <span class="p">:</span> <span class="n">n</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">time</span><span class="p">)]</span> <span class="o">=</span> <span class="n">time</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">counter_pres</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">time</span><span class="p">)</span></div>
+
+
+<span class="c1"># helper functions for simulations</span>
+<div class="viewcode-block" id="simulate_arbitrary_traj"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.simulate_arbitrary_traj.html#pyrbit.actr.simulate_arbitrary_traj">[docs]</a><span class="k">def</span> <span class="nf">simulate_arbitrary_traj</span><span class="p">(</span><span class="n">actr</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">recall</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">times</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">query_times</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+        <span class="n">actr</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="n">nrepet</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
+        <span class="n">_times</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">nrepet</span><span class="p">),))</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="n">times</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_times</span><span class="p">)</span>
+        <span class="n">actr</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">_times</span><span class="p">)</span>
+        <span class="n">query_time</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,))</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">+</span> <span class="n">_times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">query_times</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">query_time</span><span class="p">)</span>
+        <span class="n">recall</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">actr</span><span class="o">.</span><span class="n">query_item</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">query_time</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">recall</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">query_times</span></div>
+
+
+<div class="viewcode-block" id="gen_data"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.gen_data.html#pyrbit.actr.gen_data">[docs]</a><span class="k">def</span> <span class="nf">gen_data</span><span class="p">(</span><span class="n">actr_model</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">recalls</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">query_times</span> <span class="o">=</span> <span class="n">simulate_arbitrary_traj</span><span class="p">(</span><span class="n">actr_model</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">recalls</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">recalls</span><span class="p">]</span>
+    <span class="n">deltatis</span> <span class="o">=</span> <span class="p">[</span><span class="n">qtime</span> <span class="o">-</span> <span class="n">time</span> <span class="k">for</span> <span class="n">time</span><span class="p">,</span> <span class="n">qtime</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">query_times</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">recalls</span><span class="p">,</span> <span class="n">deltatis</span></div>
+
+
+<span class="c1">## visualisations</span>
+
+
+<div class="viewcode-block" id="diagnostics"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.diagnostics.html#pyrbit.actr.diagnostics">[docs]</a><span class="k">def</span> <span class="nf">diagnostics</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">deltatis</span><span class="p">,</span> <span class="n">recall</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">logregplot</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">deltatis</span><span class="p">,</span> <span class="n">recall</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="logregplot"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.logregplot.html#pyrbit.actr.logregplot">[docs]</a><span class="k">def</span> <span class="nf">logregplot</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">deltatis</span><span class="p">,</span> <span class="n">recall</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">label_prefix</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">x_bins</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;x_bins&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">x_bins</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">x_bins</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">recall</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">activation</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">numpy</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">deltati</span><span class="p">)</span> <span class="o">**</span> <span class="o">-</span><span class="n">d</span><span class="p">))</span> <span class="k">for</span> <span class="n">deltati</span> <span class="ow">in</span> <span class="n">deltatis</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="n">_logregplot_activation</span><span class="p">(</span>
+        <span class="n">activation</span><span class="p">,</span> <span class="n">recall</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">x_bins</span><span class="o">=</span><span class="n">x_bins</span><span class="p">,</span> <span class="n">label_prefix</span><span class="o">=</span><span class="n">label_prefix</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">)</span></div>
+
+
+<span class="c1">## inference</span>
+
+
+<div class="viewcode-block" id="identify_actr_from_recall_sequence"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.identify_actr_from_recall_sequence.html#pyrbit.actr.identify_actr_from_recall_sequence">[docs]</a><span class="k">def</span> <span class="nf">identify_actr_from_recall_sequence</span><span class="p">(</span>
+    <span class="n">recall_sequence</span><span class="p">,</span>
+    <span class="n">deltas</span><span class="p">,</span>
+    <span class="n">guess</span><span class="o">=</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.7</span><span class="p">),</span>
+    <span class="n">optim_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;L-BFGS-B&quot;</span><span class="p">,</span> <span class="s2">&quot;bounds&quot;</span><span class="p">:</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">)]},</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">basin_hopping</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">basin_hopping_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="n">infer_results</span> <span class="o">=</span> <span class="n">mle_sequence</span><span class="p">(</span>
+        <span class="n">_actr_sequence_likelihood_transform</span><span class="p">,</span>
+        <span class="n">optim_kwargs</span><span class="p">,</span>
+        <span class="n">guess</span><span class="p">,</span>
+        <span class="n">deltas</span><span class="p">,</span>
+        <span class="n">recall_sequence</span><span class="p">,</span>
+        <span class="n">basin_hopping</span><span class="o">=</span><span class="n">basin_hopping</span><span class="p">,</span>
+        <span class="n">basin_hopping_kwargs</span><span class="o">=</span><span class="n">basin_hopping_kwargs</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">infer_results</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">infer_results</span></div>
+
+
+<div class="viewcode-block" id="actr_observed_information_matrix"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_observed_information_matrix.html#pyrbit.actr.actr_observed_information_matrix">[docs]</a><span class="k">def</span> <span class="nf">actr_observed_information_matrix</span><span class="p">(</span><span class="n">recall_sequence</span><span class="p">,</span> <span class="n">deltatis</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">tau</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_actr_get_sequence_observed_information_matrix</span><span class="p">(</span>
+        <span class="n">recall_sequence</span><span class="p">,</span> <span class="n">deltatis</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">tau</span>
+    <span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+<span class="k">def</span> <span class="nf">_actr_get_sequence_observed_information_matrix</span><span class="p">(</span>
+    <span class="n">recall_sequence</span><span class="p">,</span> <span class="n">deltatis</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">tau</span>
+<span class="p">):</span>
+    <span class="n">J_11</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">J_12</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">J_13</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">J_22</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">J_23</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">J_33</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">for</span> <span class="n">recall</span><span class="p">,</span> <span class="n">deltati</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+        <span class="n">recall_sequence</span><span class="p">,</span>
+        <span class="n">deltatis</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">recall</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">J_11</span> <span class="o">+=</span> <span class="n">actr_ddq1_dd_dd_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">)</span>
+            <span class="n">J_12</span> <span class="o">+=</span> <span class="n">actr_ddq1_dd_ds_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">)</span>
+            <span class="n">J_13</span> <span class="o">+=</span> <span class="n">actr_ddq1_dd_dtau_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">)</span>
+            <span class="n">J_22</span> <span class="o">+=</span> <span class="n">actr_ddq1_ds_ds_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">)</span>
+            <span class="n">J_23</span> <span class="o">+=</span> <span class="n">actr_ddq1_ds_dtau_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">)</span>
+            <span class="n">J_33</span> <span class="o">+=</span> <span class="n">actr_ddq1_dtau_dtau_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">recall</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">J_11</span> <span class="o">+=</span> <span class="n">actr_ddq0_dd_dd_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">)</span>
+            <span class="n">J_12</span> <span class="o">+=</span> <span class="n">actr_ddq0_dd_ds_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">)</span>
+            <span class="n">J_13</span> <span class="o">+=</span> <span class="n">actr_ddq0_dd_dtau_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">)</span>
+            <span class="n">J_22</span> <span class="o">+=</span> <span class="n">actr_ddq0_ds_ds_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">)</span>
+            <span class="n">J_23</span> <span class="o">+=</span> <span class="n">actr_ddq0_ds_dtau_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">)</span>
+            <span class="n">J_33</span> <span class="o">+=</span> <span class="n">actr_ddq0_dtau_dtau_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;recall is not either 1 or 0, but is </span><span class="si">{</span><span class="n">recall</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">J</span> <span class="o">=</span> <span class="o">-</span><span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">J_11</span><span class="p">,</span> <span class="n">J_12</span><span class="p">,</span> <span class="n">J_13</span><span class="p">],</span> <span class="p">[</span><span class="n">J_12</span><span class="p">,</span> <span class="n">J_22</span><span class="p">,</span> <span class="n">J_23</span><span class="p">],</span> <span class="p">[</span><span class="n">J_13</span><span class="p">,</span> <span class="n">J_23</span><span class="p">,</span> <span class="n">J_33</span><span class="p">]])</span>
+    <span class="k">return</span> <span class="n">J</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">recall_sequence</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_actr_sequence_likelihood_transform</span><span class="p">(</span>
+    <span class="n">theta</span><span class="p">,</span>
+    <span class="n">deltas</span><span class="p">,</span>
+    <span class="n">recalls</span><span class="p">,</span>
+    <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="n">ll</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">d</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">tau</span> <span class="o">=</span> <span class="n">theta</span>
+    <span class="k">if</span> <span class="n">transform</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">transform</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">d</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">tau</span><span class="p">:</span> <span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">tau</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">recall</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">deltas</span><span class="p">,</span> <span class="n">recalls</span><span class="p">)):</span>
+        <span class="n">dll</span> <span class="o">=</span> <span class="n">_actr_log_likelihood_sample</span><span class="p">(</span><span class="n">recall</span><span class="p">,</span> <span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">transform</span><span class="p">)</span>
+        <span class="n">ll</span> <span class="o">+=</span> <span class="n">dll</span>
+
+    <span class="k">return</span> <span class="n">ll</span>
+
+
+<span class="k">def</span> <span class="nf">_logregplot_activation</span><span class="p">(</span><span class="n">activation</span><span class="p">,</span> <span class="n">recall</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">label_prefix</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">ci</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ci&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">recall_event_kwargs</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;recall_event_kwargs&quot;</span><span class="p">,</span> <span class="p">{})</span>
+
+    <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">regplot</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">activation</span><span class="p">,</span>
+        <span class="n">y</span><span class="o">=</span><span class="n">recall</span><span class="p">,</span>
+        <span class="n">scatter</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">fit_reg</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">logistic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+        <span class="n">ci</span><span class="o">=</span><span class="n">ci</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="n">label_prefix</span> <span class="o">+</span> <span class="s2">&quot;Logistic Regression&quot;</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">regplot</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">activation</span><span class="p">,</span>
+        <span class="n">y</span><span class="o">=</span><span class="n">recall</span><span class="p">,</span>
+        <span class="n">scatter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">fit_reg</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="n">label_prefix</span> <span class="o">+</span> <span class="s2">&quot;Recall events&quot;</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">recall_event_kwargs</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">regplot</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">activation</span><span class="p">,</span>
+        <span class="n">y</span><span class="o">=</span><span class="n">recall</span><span class="p">,</span>
+        <span class="n">scatter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">fit_reg</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="n">label_prefix</span> <span class="o">+</span> <span class="s2">&quot;Estimated recall probability&quot;</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Recall probability&quot;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Activation&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ax</span>
+
+
+<span class="k">def</span> <span class="nf">_actr_log_likelihood_sample</span><span class="p">(</span><span class="n">recall</span><span class="p">,</span> <span class="n">deltas</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">transform</span><span class="p">):</span>
+    <span class="c1"># rescaling value to linear</span>
+    <span class="n">d</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">tau</span> <span class="o">=</span> <span class="n">transform</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">tau</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">recall</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># Warning: passing to array converts recall to float</span>
+        <span class="k">return</span> <span class="n">actr_q1_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltas</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">recall</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">actr_q0_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltas</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Recall is not 0 or 1, but is </span><span class="si">{</span><span class="n">recall</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="logistic"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.logistic.html#pyrbit.actr.logistic">[docs]</a><span class="k">def</span> <span class="nf">logistic</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">x</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="activation"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.activation.html#pyrbit.actr.activation">[docs]</a><span class="k">def</span> <span class="nf">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">):</span>
+    <span class="n">deltati</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">deltati</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">deltati</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="n">d</span><span class="p">)))</span></div>
+
+
+<div class="viewcode-block" id="softplus"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.softplus.html#pyrbit.actr.softplus">[docs]</a><span class="k">def</span> <span class="nf">softplus</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">x</span><span class="p">))</span></div>
+
+
+<span class="c1">## ============ for observed information matrix ============= ##</span>
+<span class="c1">## p1, q1, p0, q0</span>
+<div class="viewcode-block" id="actr_p1_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_p1_sample.html#pyrbit.actr.actr_p1_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_p1_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="actr_p0_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_p0_sample.html#pyrbit.actr.actr_p0_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_p0_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="actr_q1_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_q1_sample.html#pyrbit.actr.actr_q1_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_q1_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="o">-</span><span class="n">softplus</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="actr_q0_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_q0_sample.html#pyrbit.actr.actr_q0_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_q0_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="o">-</span><span class="n">softplus</span><span class="p">(</span><span class="n">X</span><span class="p">)</span></div>
+
+
+<span class="c1">## first order derivatives</span>
+
+
+<div class="viewcode-block" id="da_dd"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.da_dd.html#pyrbit.actr.da_dd">[docs]</a><span class="k">def</span> <span class="nf">da_dd</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">):</span>
+    <span class="n">deltati</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">deltati</span><span class="p">)</span>
+    <span class="n">num</span> <span class="o">=</span> <span class="o">-</span><span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">deltati</span><span class="p">)</span> <span class="o">*</span> <span class="n">deltati</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="n">d</span><span class="p">))</span>
+    <span class="n">denom</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">deltati</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="n">d</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">num</span> <span class="o">/</span> <span class="n">denom</span></div>
+
+
+<div class="viewcode-block" id="actr_dq1_ds_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_dq1_ds_sample.html#pyrbit.actr.actr_dq1_ds_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_dq1_ds_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">tau</span> <span class="o">-</span> <span class="n">a</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="actr_dq1_dtau_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_dq1_dtau_sample.html#pyrbit.actr.actr_dq1_dtau_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_dq1_dtau_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span> <span class="o">/</span> <span class="n">s</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="actr_dq1_dd_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_dq1_dd_sample.html#pyrbit.actr.actr_dq1_dd_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_dq1_dd_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">s</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">da_dd</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="actr_dq0_ds_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_dq0_ds_sample.html#pyrbit.actr.actr_dq0_ds_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_dq0_ds_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="o">-</span><span class="p">(</span><span class="n">tau</span> <span class="o">-</span> <span class="n">a</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="actr_dq0_dtau_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_dq0_dtau_sample.html#pyrbit.actr.actr_dq0_dtau_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_dq0_dtau_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">s</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="actr_dq0_dd_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_dq0_dd_sample.html#pyrbit.actr.actr_dq0_dd_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_dq0_dd_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span> <span class="o">/</span> <span class="n">s</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">da_dd</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span></div>
+
+
+<span class="c1">## Second order derivatives</span>
+
+
+<div class="viewcode-block" id="dda_ddd"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.dda_ddd.html#pyrbit.actr.dda_ddd">[docs]</a><span class="k">def</span> <span class="nf">dda_ddd</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">):</span>
+    <span class="n">deltati</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">deltati</span><span class="p">)</span>
+    <span class="n">num1</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">deltati</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">deltati</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="n">d</span><span class="p">))</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+        <span class="n">deltati</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="n">d</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">num2</span> <span class="o">=</span> <span class="o">-</span><span class="p">((</span><span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">deltati</span><span class="p">)</span> <span class="o">*</span> <span class="n">deltati</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="n">d</span><span class="p">)))</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">denom</span> <span class="o">=</span> <span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">deltati</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">d</span><span class="p">))))</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">num1</span> <span class="o">+</span> <span class="n">num2</span><span class="p">)</span> <span class="o">/</span> <span class="n">denom</span></div>
+
+
+<span class="c1"># omega = 1</span>
+<div class="viewcode-block" id="actr_ddq1_ds_ds_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_ddq1_ds_ds_sample.html#pyrbit.actr.actr_ddq1_ds_ds_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_ddq1_ds_ds_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">3</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">tau</span> <span class="o">-</span> <span class="n">a</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">4</span> <span class="o">*</span> <span class="p">(</span>
+        <span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="actr_ddq1_dtau_dtau_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_ddq1_dtau_dtau_sample.html#pyrbit.actr.actr_ddq1_dtau_dtau_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_ddq1_dtau_dtau_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="actr_ddq1_dd_dd_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_ddq1_dd_dd_sample.html#pyrbit.actr.actr_ddq1_dd_dd_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_ddq1_dd_dd_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">))</span> <span class="o">*</span> <span class="n">da_dd</span><span class="p">(</span>
+        <span class="n">deltati</span><span class="p">,</span> <span class="n">d</span>
+    <span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">s</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">dda_ddd</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="actr_ddq1_ds_dtau_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_ddq1_ds_dtau_sample.html#pyrbit.actr.actr_ddq1_ds_dtau_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_ddq1_ds_dtau_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">tau</span> <span class="o">-</span> <span class="n">a</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">3</span> <span class="o">*</span> <span class="p">(</span><span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="actr_ddq1_dd_dtau_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_ddq1_dd_dtau_sample.html#pyrbit.actr.actr_ddq1_dd_dtau_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_ddq1_dd_dtau_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">))</span> <span class="o">*</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">da_dd</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="actr_ddq1_dd_ds_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_ddq1_dd_ds_sample.html#pyrbit.actr.actr_ddq1_dd_ds_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_ddq1_dd_ds_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">da_dd</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">tau</span> <span class="o">-</span> <span class="n">a</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">3</span> <span class="o">*</span> <span class="n">da_dd</span><span class="p">(</span>
+        <span class="n">deltati</span><span class="p">,</span> <span class="n">d</span>
+    <span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">))</span></div>
+
+
+<span class="c1"># omega = 0</span>
+
+
+<div class="viewcode-block" id="actr_ddq0_ds_ds_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_ddq0_ds_ds_sample.html#pyrbit.actr.actr_ddq0_ds_ds_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_ddq0_ds_ds_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">3</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">tau</span> <span class="o">-</span> <span class="n">a</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">4</span> <span class="o">*</span> <span class="p">(</span>
+        <span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="actr_ddq0_dtau_dtau_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_ddq0_dtau_dtau_sample.html#pyrbit.actr.actr_ddq0_dtau_dtau_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_ddq0_dtau_dtau_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="actr_ddq0_dd_dd_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_ddq0_dd_dd_sample.html#pyrbit.actr.actr_ddq0_dd_dd_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_ddq0_dd_dd_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">))</span> <span class="o">*</span> <span class="n">da_dd</span><span class="p">(</span>
+        <span class="n">deltati</span><span class="p">,</span> <span class="n">d</span>
+    <span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">s</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">dda_ddd</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="actr_ddq0_ds_dtau_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_ddq0_ds_dtau_sample.html#pyrbit.actr.actr_ddq0_ds_dtau_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_ddq0_ds_dtau_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">tau</span> <span class="o">-</span> <span class="n">a</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">3</span> <span class="o">*</span> <span class="p">(</span><span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">))</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="actr_ddq0_dd_dtau_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_ddq0_dd_dtau_sample.html#pyrbit.actr.actr_ddq0_dd_dtau_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_ddq0_dd_dtau_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">))</span> <span class="o">*</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">da_dd</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="actr_ddq0_dd_ds_sample"><a class="viewcode-back" href="../../_autosummary/pyrbit.actr.actr_ddq0_dd_ds_sample.html#pyrbit.actr.actr_ddq0_dd_ds_sample">[docs]</a><span class="k">def</span> <span class="nf">actr_ddq0_dd_ds_sample</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">deltati</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">activation</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">da_dd</span><span class="p">(</span><span class="n">deltati</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">tau</span> <span class="o">-</span> <span class="n">a</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span><span class="o">**</span><span class="mi">3</span> <span class="o">*</span> <span class="n">da_dd</span><span class="p">(</span>
+        <span class="n">deltati</span><span class="p">,</span> <span class="n">d</span>
+    <span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">logistic</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">logistic</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">))</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="c1"># [startdoc]</span>
+    <span class="kn">from</span> <span class="nn">pyrbit.mle_utils</span> <span class="kn">import</span> <span class="n">CI_asymptotical</span><span class="p">,</span> <span class="n">confidence_ellipse</span>
+    <span class="kn">from</span> <span class="nn">pyrbit.actr</span> <span class="kn">import</span> <span class="p">(</span>
+        <span class="n">ACTR</span><span class="p">,</span>
+        <span class="n">diagnostics</span><span class="p">,</span>
+        <span class="n">actr_observed_information_matrix</span><span class="p">,</span>
+        <span class="n">identify_actr_from_recall_sequence</span><span class="p">,</span>
+        <span class="n">gen_data</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="kn">import</span> <span class="nn">numpy</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+    <span class="n">SEED</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="mi">10000</span>
+
+    <span class="n">d</span> <span class="o">=</span> <span class="mf">0.6</span>
+    <span class="n">tau</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.7</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="mf">0.25</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">)</span>
+
+    <span class="c1"># ==================== Simulate some data</span>
+    <span class="n">actr</span> <span class="o">=</span> <span class="n">ACTR</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">buffer_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">)</span>
+    <span class="n">recalls</span><span class="p">,</span> <span class="n">deltatis</span> <span class="o">=</span> <span class="n">gen_data</span><span class="p">(</span><span class="n">actr</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span>
+
+    <span class="c1"># ================= Run Diagnostics (logistic regression)</span>
+    <span class="n">ax</span> <span class="o">=</span> <span class="n">diagnostics</span><span class="p">(</span>
+        <span class="mf">0.6</span><span class="p">,</span>
+        <span class="n">deltatis</span><span class="p">,</span>
+        <span class="n">recalls</span><span class="p">,</span>
+        <span class="n">line_kws</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;green&quot;</span><span class="p">},</span>
+        <span class="n">recall_event_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;scatter_kws&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;marker&quot;</span><span class="p">:</span> <span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="s2">&quot;s&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">}},</span>
+    <span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="c1"># ==================== Perform ML Estimation</span>
+    <span class="n">optim_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;L-BFGS-B&quot;</span><span class="p">,</span> <span class="s2">&quot;bounds&quot;</span><span class="p">:</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">)]}</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">guess</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># An illustration of identifying with basin_hopping. This slows down inference, as optimization is repeated 1+niter times</span>
+    <span class="k">def</span> <span class="nf">_callable</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">accept</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">accept</span><span class="p">)</span>
+
+    <span class="n">inference_results</span> <span class="o">=</span> <span class="n">identify_actr_from_recall_sequence</span><span class="p">(</span>
+        <span class="n">recalls</span><span class="p">,</span>
+        <span class="n">deltatis</span><span class="p">,</span>
+        <span class="n">optim_kwargs</span><span class="o">=</span><span class="n">optim_kwargs</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+        <span class="n">guess</span><span class="o">=</span><span class="n">guess</span><span class="p">,</span>
+        <span class="n">basin_hopping</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">basin_hopping_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;niter&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;callback&quot;</span><span class="p">:</span> <span class="n">_callable</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="c1"># see scipy.optimize doc for returned object with basinhopping</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">inference_results</span><span class="o">.</span><span class="n">lowest_optimization_result</span><span class="o">.</span><span class="n">x</span>
+
+    <span class="c1"># ================= computing Confidence Intervals and Ellipses</span>
+    <span class="n">J</span> <span class="o">=</span> <span class="n">actr_observed_information_matrix</span><span class="p">(</span><span class="n">recalls</span><span class="p">,</span> <span class="n">deltatis</span><span class="p">,</span> <span class="o">*</span><span class="n">x</span><span class="p">)</span>
+    <span class="c1"># covariance matrix</span>
+    <span class="n">covar</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">J</span><span class="p">)</span>
+    <span class="c1"># Confidence intervals</span>
+    <span class="n">cis</span> <span class="o">=</span> <span class="n">CI_asymptotical</span><span class="p">(</span><span class="n">covar</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+    <span class="c1"># Confidence ellipses</span>
+    <span class="c1"># draw the three ellipses, because the confidence ellipsoid will be hard to interpret.</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="sa">r</span><span class="s2">&quot;$d$&quot;</span><span class="p">,</span> <span class="sa">r</span><span class="s2">&quot;$s$&quot;</span><span class="p">,</span> <span class="sa">r</span><span class="s2">&quot;$\tau$&quot;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="p">(</span><span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">3</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="p">(</span><span class="n">n</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span> <span class="o">%</span> <span class="mi">3</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="n">j</span><span class="p">:</span>
+            <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">j</span><span class="p">,</span> <span class="n">i</span>
+        <span class="n">_cov</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">covar</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">],</span> <span class="n">covar</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]],</span> <span class="p">[</span><span class="n">covar</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">],</span> <span class="n">covar</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="n">j</span><span class="p">]]])</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">confidence_ellipse</span><span class="p">((</span><span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="n">j</span><span class="p">]),</span> <span class="n">_cov</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">axs</span><span class="p">[</span><span class="n">n</span><span class="p">])</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">labels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">labels</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Julien Gori.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
