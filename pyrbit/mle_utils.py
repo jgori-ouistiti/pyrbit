@@ -6,6 +6,7 @@ from matplotlib.patches import Ellipse
 import pandas
 import seaborn
 
+
 class InvalidConfidenceEllipsisError(Exception):
     """InvalidConfidenceEllipsisError
 
@@ -55,7 +56,11 @@ def _confidence_ellipsis(x, cov, critical_value=5.991, **kwargs):
         ellipsis_large_axis = 2 * numpy.sqrt(critical_value * eigen_values[0])
         ellipsis_small_axis = 2 * numpy.sqrt(critical_value * eigen_values[1])
     return Ellipse(
-        x, ellipsis_large_axis, ellipsis_small_axis, ellipsis_orientation, **kwargs
+        x,
+        ellipsis_large_axis,
+        ellipsis_small_axis,
+        ellipsis_orientation * 180 / 3.1415,
+        **kwargs,
     )
 
 
@@ -160,7 +165,7 @@ def nearestPD(A):
     k = 1
     while not isPD(A3):
         mineig = numpy.min(numpy.real(numpy.linalg.eigvals(A3)))
-        A3 += I * (-mineig * k ** 2 + spacing)
+        A3 += I * (-mineig * k**2 + spacing)
         k += 1
 
     return A3
@@ -175,18 +180,23 @@ def isPD(B):
         return False
 
 
-def compute_summary_statistics_estimation(estimated_parameters, subsample_sequence, TRUE_VALUE, ax = None,      bias_kwargs=None, std_kwargs=None,):
+def compute_summary_statistics_estimation(
+    estimated_parameters,
+    subsample_sequence,
+    TRUE_VALUE,
+    ax=None,
+    bias_kwargs=None,
+    std_kwargs=None,
+):
     if bias_kwargs is None:
         bias_kwargs = {}
     if std_kwargs is None:
         std_kwargs = {}
 
-    n=estimated_parameters.shape[0]
+    n = estimated_parameters.shape[0]
     N = estimated_parameters.shape[1]
-    
-    TRUE_VALUE = numpy.repeat(
-        numpy.asarray(TRUE_VALUE)[:, None],N , axis=1
-    )
+
+    TRUE_VALUE = numpy.repeat(numpy.asarray(TRUE_VALUE)[:, None], N, axis=1)
 
     estimated_parameters_bias = numpy.abs(
         numpy.nanmean(estimated_parameters, axis=2) - TRUE_VALUE
@@ -214,7 +224,7 @@ def compute_summary_statistics_estimation(estimated_parameters, subsample_sequen
 
     if ax is None:
         return agg_data, df
-    
+
     seaborn.barplot(
         data=df, x="N", y="|Bias|", hue="parameter", ax=ax[0], **bias_kwargs
     )
